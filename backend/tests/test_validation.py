@@ -57,7 +57,7 @@ def test_competition_hosts_resolve_to_campus_channel(client):
         ),
         (
             "https://cmcc.cdut.edu.cn/info/1037/9038.htm",
-            "通信学院竞赛",
+            "材料与化学化工学院",
         ),
         (
             "https://scgxxkjs.moocollege.com/competition",

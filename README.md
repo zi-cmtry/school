@@ -58,7 +58,7 @@ Optional: `role_tags[]`, `location`, `apply_url`, `summary`.
 - 学生就业指导中心 — `cdutjy.cdut.edu.cn` — official — internship, campus_recruit
 - 教务处竞赛通知 — `aao.cdut.edu.cn` — campus_channel — competition
 - 计算机学院竞赛 — `cim.cdut.edu.cn` — campus_channel — competition
-- 通信学院竞赛 — `cmcc.cdut.edu.cn` — campus_channel — competition
+- 材料与化学化工学院 — `cmcc.cdut.edu.cn` — campus_channel — competition
 - 学科竞赛平台(moocollege) — `scgxxkjs.moocollege.com` — campus_channel — competition
 
 ## Run

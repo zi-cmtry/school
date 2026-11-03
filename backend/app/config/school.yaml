@@ -13,7 +13,7 @@ sources:
     hosts: [cim.cdut.edu.cn]
     applies_to: [competition]
   - tier: campus_channel
-    name: 通信学院竞赛
+    name: 材料与化学化工学院
     hosts: [cmcc.cdut.edu.cn]
     applies_to: [competition]
   - tier: campus_channel
