@@ -139,7 +139,7 @@ export function SubmitPage() {
         ) : null}
         {whitelistWarning ? (
           <p className="banner note">
-            这个竞赛链接不在白名单里。白名单是教务处、管理科学学院、材料与化学化工学院，以及四川省高校学科竞赛平台。仍然可以提交，但不会标成校内渠道。
+            这个竞赛链接不在白名单里。白名单是教务处、管理科学学院、材料与化学化工学院，以及四川省高校学科竞赛平台（scgxxkjs.moocollege.com 与 cp.moocollege.com）。仍然可以提交，但不会标成校内渠道。
           </p>
         ) : null}
         <label>

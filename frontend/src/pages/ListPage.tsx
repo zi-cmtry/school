@@ -78,7 +78,7 @@ export function ListPage({ stream }: { stream: Stream }) {
         <p className="lede">
           {stream === "jobs"
             ? "求职页请求默认列表：进行中的实习和校招，不含竞赛。个人设置不会改变这里的顺序。"
-            : "竞赛页只请求竞赛。白名单站点包括教务处、管理科学学院、材料与化学化工学院，以及四川省高校学科竞赛平台。"}
+            : "竞赛页只请求竞赛。白名单站点包括教务处、管理科学学院、材料与化学化工学院，以及四川省高校学科竞赛平台（scgxxkjs.moocollege.com 与 cp.moocollege.com）。"}
         </p>
         <div className="filters" role="group" aria-label="筛选">
           {stream === "jobs" ? (
