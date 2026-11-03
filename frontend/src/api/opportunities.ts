@@ -221,15 +221,9 @@ function toCreateBodyPartial(patch: Partial<CreateOpportunityInput>): Record<str
   return body
 }
 
-export function jobListQuery(kind: OpportunityKind | null, status: OpportunityStatus | null): ListQuery {
-  const query: ListQuery = {}
-  if (kind) query.kind = kind
-  if (status) query.status = status
-  return query
-}
-
-export function competitionListQuery(status: OpportunityStatus | null): ListQuery {
-  const query: ListQuery = { kind: "competition" }
+/** 三个入口都会带上 kind。已截止再加 status。画像不进查询。 */
+export function kindListQuery(kind: OpportunityKind, status: OpportunityStatus | null): ListQuery {
+  const query: ListQuery = { kind }
   if (status) query.status = status
   return query
 }

@@ -10,6 +10,7 @@ import {
   type OpportunityKind,
 } from "../domain/opportunity"
 import { KIND_LABEL, TIER_LABEL, beijingLocalToIso, splitTags } from "../labels"
+import { listPath } from "../lists"
 
 const KINDS: OpportunityKind[] = ["internship", "campus_recruit", "competition"]
 
@@ -62,12 +63,7 @@ export function SubmitPage() {
         apply_url: applyUrl,
         summary,
       })
-      if (created.kind === "competition") {
-        navigate(`/competitions?created=${created.id}`)
-      } else {
-        const status = created.status !== "active" ? "&status=expired" : ""
-        navigate(`/?kind=${created.kind}${status}&created=${created.id}`)
-      }
+      navigate(listPath(created.kind, created.status, created.id))
     } catch (reason) {
       if (reason instanceof ApiError) {
         const map: Record<string, string> = {}

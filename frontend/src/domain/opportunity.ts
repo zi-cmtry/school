@@ -57,7 +57,10 @@ export type FieldError = {
   message: string
 }
 
-/** 与后端查询一致：不传 kind 就是进行中的实习和校招；竞赛用 kind=competition。 */
+/**
+ * 与后端查询一致。
+ * 页面三个入口总会带 kind。省略 kind 时，后端和本地回退仍是进行中的实习与校招，不含竞赛。
+ */
 export type ListQuery = {
   kind?: OpportunityKind
   status?: OpportunityStatus

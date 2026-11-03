@@ -1,18 +1,29 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { explainApiError } from "../api/messages"
 import { getOpportunity } from "../api/opportunities"
 import { ApiError, type Opportunity } from "../domain/opportunity"
+import { hideOpportunity, isHidden } from "../hidden"
 import { KIND_LABEL, STATUS_LABEL, TIER_HINT, TIER_LABEL, formatDateTime, showText } from "../labels"
+import { listPath } from "../lists"
 
 export function DetailPage() {
   const { id = "" } = useParams()
   const [item, setItem] = useState<Opportunity | null | undefined>(undefined)
+  const [revision, setRevision] = useState(0)
   const [error, setError] = useState("")
+  const hidden = useMemo(() => isHidden(id), [id, revision])
 
   useEffect(() => {
     document.title = "详情 · 校园可信信息"
+    if (isHidden(id)) {
+      setItem(undefined)
+      setError("")
+      return
+    }
     let cancelled = false
+    setItem(undefined)
+    setError("")
     getOpportunity(id)
       .then((result) => {
         if (cancelled) return
@@ -25,7 +36,24 @@ export function DetailPage() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, hidden])
+
+  if (hidden) {
+    return (
+      <section className="panel">
+        <h2>已标为不感兴趣</h2>
+        <p className="lede">这条信息不会出现在你的列表和详情里。记录仍在服务器上，到设置里可以解除。</p>
+        <div className="form-actions">
+          <Link className="primary" to="/settings">
+            去设置解除
+          </Link>
+          <Link className="ghost" to="/internships">
+            返回列表
+          </Link>
+        </div>
+      </section>
+    )
+  }
 
   if (error) return <p className="banner">{error}</p>
   if (item === undefined) return <p className="lede">加载中</p>
@@ -33,17 +61,12 @@ export function DetailPage() {
     return (
       <div className="empty">
         <h2>没有这条信息</h2>
-        <Link to="/">回求职列表</Link>
+        <Link to="/internships">返回列表</Link>
       </div>
     )
   }
 
-  const back =
-    item.kind === "competition"
-      ? item.status === "active"
-        ? "/competitions"
-        : `/competitions?status=${item.status}`
-      : `/?kind=${item.kind}${item.status === "active" ? "" : `&status=${item.status}`}`
+  const back = listPath(item.kind, item.status)
   const rows: [string, string][] = [
     ["标题", item.title],
     ["类型", KIND_LABEL[item.kind]],
@@ -82,6 +105,16 @@ export function DetailPage() {
         ) : (
           <span className="meta">原文未提供投递或报名链接</span>
         )}
+        <button
+          className="ghost"
+          type="button"
+          onClick={() => {
+            hideOpportunity({ id: item.id, title: item.title })
+            setRevision((current) => current + 1)
+          }}
+        >
+          不感兴趣
+        </button>
       </div>
       <dl className="fields">
         {rows.map(([label, value]) => (
