@@ -13,6 +13,7 @@ export const COMPETITION_WHITELIST_HOSTS = [
   "cim.cdut.edu.cn",
   "cmcc.cdut.edu.cn",
   "scgxxkjs.moocollege.com",
+  "cp.moocollege.com",
 ] as const
 
 export const JOB_OFFICIAL_HOST = "cdutjy.cdut.edu.cn"
@@ -177,7 +178,7 @@ const SOURCE_RULES: { hosts: string[]; kinds: OpportunityKind[]; tier: SourceTie
     name: "材料与化学化工学院",
   },
   {
-    hosts: ["scgxxkjs.moocollege.com"],
+    hosts: ["scgxxkjs.moocollege.com", "cp.moocollege.com"],
     kinds: ["competition"],
     tier: "campus_channel",
     name: "学科竞赛平台(moocollege)",

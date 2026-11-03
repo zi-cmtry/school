@@ -190,7 +190,7 @@ export const seedOpportunities: Opportunity[] = [
     deadline_at: "2026-04-15T12:00:00+08:00",
     source_url: "https://aao.cdut.edu.cn/info/1442/7000.htm",
     source_name: "成都理工大学教务处",
-    source_tier: "official",
+    source_tier: "campus_channel",
     apply_url: "http://jsjds.blcu.edu.cn/",
     summary:
       "教务处通知，发布时间2026-04-08。计算机与网络安全学院（示范性软件学院）承办。参赛对象为成都理工大学在籍本科生。报名及材料报送截止2026年4月15日中午12点，材料发送至 cdutjsjsjdx@qq.com。大赛官网 http://jsjds.blcu.edu.cn/ 。",

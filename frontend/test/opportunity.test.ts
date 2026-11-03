@@ -1,10 +1,17 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import { explainApiError } from "../src/api/messages.ts"
+import { explainApiError, explainFieldError } from "../src/api/messages.ts"
 import { competitionListQuery, jobListQuery } from "../src/api/opportunities.ts"
 import { opportunityCollectionPath } from "../src/api/paths.ts"
 import { seedOpportunities } from "../src/data/seed.ts"
-import { ApiError, filterOpportunities, makeDedupeKey, resolveSource, validateAndBuild } from "../src/domain/opportunity.ts"
+import {
+  ApiError,
+  competitionOnWhitelist,
+  filterOpportunities,
+  makeDedupeKey,
+  resolveSource,
+  validateAndBuild,
+} from "../src/domain/opportunity.ts"
 import { SAMPLE_PROFILE, parseProfile } from "../src/profile.ts"
 
 const now = new Date("2026-11-03T11:04:00.000Z")
@@ -104,9 +111,61 @@ describe("录入校验", () => {
     assert.equal(resolveSource("https://aao.cdut.edu.cn/info/1442/7000.htm", "competition").source_tier, "campus_channel")
     assert.equal(resolveSource("https://aao.cdut.edu.cn/info/1.htm", "internship").source_tier, "unverified")
     assert.equal(resolveSource("https://example.com/job", "internship").source_tier, "unverified")
+    const detail = "https://cp.moocollege.com/home/competition/details?competitionId=107706"
+    assert.deepEqual(resolveSource(detail, "competition"), {
+      source_name: "学科竞赛平台(moocollege)",
+      source_tier: "campus_channel",
+    })
+    assert.deepEqual(resolveSource("https://scgxxkjs.moocollege.com/competition", "competition"), {
+      source_name: "学科竞赛平台(moocollege)",
+      source_tier: "campus_channel",
+    })
+    assert.equal(resolveSource(detail, "internship").source_tier, "unverified")
+    assert.equal(competitionOnWhitelist(detail), true)
+    assert.equal(competitionOnWhitelist("https://www.cp.moocollege.com/home"), true)
+    assert.equal(competitionOnWhitelist("https://scgxxkjs.moocollege.com/competition"), true)
+    assert.equal(competitionOnWhitelist("https://example.com/contest"), false)
     assert.equal(makeDedupeKey("海尔", "校招", "2026-11-30T16:30:00.000Z").endsWith("|2026-12-01"), true)
     const apiError = new ApiError(400, "validation", "source_url is required", { origin: "api" })
     assert.equal(explainApiError(apiError), "来源链接不能为空（后端返回 400）")
+  })
+})
+
+describe("后端中文 detail", () => {
+  it("按 PR#1 的 detail 原文映射，不落成笼统的 400 或 409", () => {
+    const emptyUrl = new ApiError(400, "validation", "source_url 不能为空", {
+      origin: "api",
+      fields: [{ field: "source_url", message: "source_url 不能为空" }],
+    })
+    assert.equal(explainApiError(emptyUrl), "来源链接不能为空（后端返回 400）")
+    assert.equal(explainFieldError("source_url", "source_url 不能为空"), "请填写来源链接")
+
+    const relativeUrl = new ApiError(400, "validation", "source_url 必须是绝对的 http(s) 地址", { origin: "api" })
+    assert.equal(explainApiError(relativeUrl), "来源链接必须是以 http 或 https 开头的完整地址（后端返回 400）")
+    assert.equal(
+      explainFieldError("source_url", "source_url 必须是绝对的 http(s) 地址"),
+      "来源链接必须是以 http 或 https 开头的完整地址",
+    )
+
+    const sameUrl = new ApiError(409, "duplicate", "source_url 已存在", { origin: "api" })
+    assert.equal(explainApiError(sameUrl), "这条来源链接已经收录过（后端返回 409）")
+    assert.equal(explainFieldError("source_url", "source_url 已存在"), "这条来源链接已经收录过")
+
+    const sameKey = new ApiError(409, "duplicate", "已存在相同 dedupe_key 的有效记录", { origin: "api" })
+    assert.equal(explainApiError(sameKey), "已有一条进行中的记录，单位、标题和截止日期相同（后端返回 409）")
+
+    const clash = new ApiError(409, "duplicate", "与已有记录冲突", { origin: "api" })
+    assert.equal(explainApiError(clash), "与已有记录冲突（后端返回 409）")
+
+    const missing = new ApiError(404, "http", "未找到该机会", { origin: "api" })
+    assert.equal(explainApiError(missing), "没有找到这条信息（后端返回 404）")
+
+    const blankTitle = new ApiError(422, "validation", "title: Value error, 不能为空", { origin: "api" })
+    assert.equal(explainApiError(blankTitle), "有必填项没有填完整（后端返回 422）")
+    assert.equal(explainFieldError("title", "Value error, 不能为空"), "请填写标题")
+
+    const badKind = new ApiError(400, "validation", "kind 无效", { origin: "api" })
+    assert.equal(explainApiError(badKind), "提交内容没有通过校验（后端返回 400）")
   })
 })
 
@@ -129,5 +188,18 @@ describe("样例规模", () => {
       assert.ok(item.source_url.startsWith("http"))
       assert.ok(!Number.isNaN(new Date(item.deadline_at).getTime()))
     }
+  })
+
+  it("计算机设计大赛样例是校内渠道，求职样例仍覆盖工科等方向", () => {
+    const contest = seedOpportunities.find((item) => item.id === "comp-jsjds-2026")
+    assert.ok(contest)
+    assert.equal(contest.kind, "competition")
+    assert.equal(contest.source_url, "https://aao.cdut.edu.cn/info/1442/7000.htm")
+    assert.equal(contest.source_tier, "campus_channel")
+
+    const jobs = seedOpportunities.filter((item) => item.kind === "internship" || item.kind === "campus_recruit")
+    const text = jobs.map((item) => `${item.title} ${item.company} ${item.role_tags.join(" ")}`).join("\n")
+    assert.match(text, /石油工程|电池材料|电子/)
+    assert.ok(jobs.some((item) => item.company !== "成都理工大学管理科学学院"))
   })
 })
