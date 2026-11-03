@@ -26,7 +26,9 @@ REQUIRED_URLS = (
     "https://aao.cdut.edu.cn/info/1442/7000.htm",
     "https://cim.cdut.edu.cn/info/1098/6232.htm",
 )
-MOOCOLLEGE_PREFIX = "https://scgxxkjs.moocollege.com/"
+MOOCOLLEGE_DETAIL_URL = (
+    "https://cp.moocollege.com/home/competition/details?competitionId=107706"
+)
 
 
 def at_days(days: int) -> datetime:
@@ -181,18 +183,15 @@ def fixtures() -> list[dict]:
             kind="competition",
             company="四川省教育厅",
             days=25,
-            source_url="https://scgxxkjs.moocollege.com/competition",
+            source_url=MOOCOLLEGE_DETAIL_URL,
             role_tags=["医学", "省赛"],
             location="四川",
-            apply_url=(
-                "https://cp.moocollege.com/home/competition/details"
-                "?competitionId=107706"
-            ),
+            apply_url=MOOCOLLEGE_DETAIL_URL,
             summary=(
-                "四川省高校学科竞赛平台（大学生竞赛网）竞赛列表中的省赛，"
+                "四川省高校学科竞赛平台上的省赛详情，"
                 "主办单位为川北医学院、西南医科大学。"
             ),
-            expected_tier="campus_channel",
+            expected_tier="unverified",
         ),
     ]
 
@@ -208,8 +207,8 @@ def main() -> None:
     for required in REQUIRED_URLS:
         if required not in urls:
             raise SystemExit(f"missing required competition URL: {required}")
-    if not any(url.startswith(MOOCOLLEGE_PREFIX) for url in urls):
-        raise SystemExit("seed needs a scgxxkjs.moocollege.com competition URL")
+    if MOOCOLLEGE_DETAIL_URL not in urls:
+        raise SystemExit("seed needs the moocollege competition detail URL")
 
     now = datetime.now(timezone.utc)
     db = SessionLocal()

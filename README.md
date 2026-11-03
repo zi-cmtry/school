@@ -81,11 +81,11 @@ Seeded jobs (official, `cdutjy.cdut.edu.cn`):
 - 中伟集团2026届校园招聘
 - 学大教育2026届校园招聘 — deadline already past
 
-Seeded competitions (campus_channel):
+Seeded competitions:
 
-- https://aao.cdut.edu.cn/info/1442/7000.htm
-- https://cim.cdut.edu.cn/info/1098/6232.htm
-- https://scgxxkjs.moocollege.com/competition — 第三届四川省大学生智能医学创新设计大赛
+- https://aao.cdut.edu.cn/info/1442/7000.htm — campus_channel
+- https://cim.cdut.edu.cn/info/1098/6232.htm — campus_channel
+- https://cp.moocollege.com/home/competition/details?competitionId=107706 — 第三届四川省大学生智能医学创新设计大赛. This detail host is `cp.moocollege.com`, so the row’s `source_tier` is `unverified`.
 
 ## curl
 
