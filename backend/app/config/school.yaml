@@ -1,0 +1,26 @@
+# 成都理工大学可信来源。tier 与 applies_to 使用接口枚举，保持英文。
+school: 成都理工大学
+sources:
+  - tier: official
+    name: 学生就业指导中心
+    hosts: [cdutjy.cdut.edu.cn]
+    applies_to: [internship, campus_recruit]
+  - tier: campus_channel
+    name: 教务处竞赛通知
+    hosts: [aao.cdut.edu.cn]
+    applies_to: [competition]
+  - tier: campus_channel
+    name: 计算机学院竞赛
+    hosts: [cim.cdut.edu.cn]
+    applies_to: [competition]
+  - tier: campus_channel
+    name: 材料与化学化工学院
+    hosts: [cmcc.cdut.edu.cn]
+    applies_to: [competition]
+  - tier: campus_channel
+    name: 学科竞赛平台(moocollege)
+    hosts:
+      - scgxxkjs.moocollege.com
+      - cp.moocollege.com
+    applies_to:
+      - competition
