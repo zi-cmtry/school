@@ -63,6 +63,10 @@ def test_competition_hosts_resolve_to_campus_channel(client):
             "https://scgxxkjs.moocollege.com/competition",
             "学科竞赛平台(moocollege)",
         ),
+        (
+            "https://cp.moocollege.com/home/competition/details?competitionId=107706",
+            "学科竞赛平台(moocollege)",
+        ),
     ]
     for index, (url, name) in enumerate(cases):
         response = client.post(
@@ -114,12 +118,16 @@ def test_unknown_host_is_unverified(client):
 
 
 def test_moocollege_job_is_unverified(client):
-    response = client.post(
-        "/api/v1/opportunities",
-        json=sample(source_url="https://scgxxkjs.moocollege.com/competition"),
-    )
-    assert response.status_code == 201
-    assert response.json()["source_tier"] == "unverified"
+    for url in (
+        "https://scgxxkjs.moocollege.com/competition",
+        "https://cp.moocollege.com/home/competition/details?competitionId=1",
+    ):
+        response = client.post(
+            "/api/v1/opportunities",
+            json=sample(title=url, company=url, source_url=url),
+        )
+        assert response.status_code == 201, response.text
+        assert response.json()["source_tier"] == "unverified"
 
 
 def test_health_and_cors(client):

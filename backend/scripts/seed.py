@@ -189,7 +189,7 @@ def fixtures() -> list[dict]:
                 "四川省高校学科竞赛平台上的省赛详情，"
                 "主办单位为川北医学院、西南医科大学。"
             ),
-            expected_tier="unverified",
+            expected_tier="campus_channel",
         ),
     ]
 

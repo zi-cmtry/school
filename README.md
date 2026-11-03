@@ -59,7 +59,7 @@ backend/tests/
 - 教务处竞赛通知 — `aao.cdut.edu.cn` — `campus_channel` — `competition`
 - 计算机学院竞赛 — `cim.cdut.edu.cn` — `campus_channel` — `competition`
 - 材料与化学化工学院 — `cmcc.cdut.edu.cn` — `campus_channel` — `competition`
-- 学科竞赛平台(moocollege) — `scgxxkjs.moocollege.com` — `campus_channel` — `competition`
+- 学科竞赛平台(moocollege) — `scgxxkjs.moocollege.com`、`cp.moocollege.com` — `campus_channel` — `competition`
 
 ## 运行
 
@@ -85,7 +85,7 @@ make run
 
 - https://aao.cdut.edu.cn/info/1442/7000.htm — `campus_channel`
 - https://cim.cdut.edu.cn/info/1098/6232.htm — `campus_channel`
-- https://cp.moocollege.com/home/competition/details?competitionId=107706 — 第三届四川省大学生智能医学创新设计大赛。这是带 `competitionId` 的赛事详情页，主机是 `cp.moocollege.com`，因此该条 `source_tier` 为 `unverified`。
+- https://cp.moocollege.com/home/competition/details?competitionId=107706 — 第三届四川省大学生智能医学创新设计大赛，`campus_channel`。这是带 `competitionId` 的赛事详情页。
 
 ## curl 示例
 
