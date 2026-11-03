@@ -1,9 +1,7 @@
-"""Load a small, repeatable set of real campus notices.
+"""写入一组可重复执行的校园通知。
 
-Deadlines are offsets from the moment you run the script: one campus
-recruit is already past (expire demo) and the rest are in the future.
-Titles and source URLs point at published notices. Re-running replaces
-those URLs.
+截止时间相对运行时刻计算：一条校招已经过期，用于演示过期任务，其余在未来。
+标题和链接来自已发布通知。再次运行会按 source_url 替换这些记录。
 """
 
 from __future__ import annotations
@@ -52,7 +50,7 @@ def record(
     source_name, source_tier = resolve_source(source_url, kind)
     if source_tier != expected_tier:
         raise SystemExit(
-            f"source tier for {source_url} ({kind}) is {source_tier}, expected {expected_tier}"
+            f"{source_url}（{kind}）的 source_tier 为 {source_tier}，期望 {expected_tier}"
         )
     deadline_at = at_days(days)
     return {
@@ -203,12 +201,12 @@ def main() -> None:
     contests = [item for item in items if item["kind"] == "competition"]
     urls = [item["source_url"] for item in items]
     if len(jobs) < 5 or len(contests) < 2:
-        raise SystemExit("seed must include at least 5 jobs and 2 competitions")
+        raise SystemExit("种子至少需要 5 条岗位和 2 条竞赛")
     for required in REQUIRED_URLS:
         if required not in urls:
-            raise SystemExit(f"missing required competition URL: {required}")
+            raise SystemExit(f"缺少必须的竞赛链接：{required}")
     if MOOCOLLEGE_DETAIL_URL not in urls:
-        raise SystemExit("seed needs the moocollege competition detail URL")
+        raise SystemExit("种子需要 moocollege 竞赛详情页链接")
 
     now = datetime.now(timezone.utc)
     db = SessionLocal()
@@ -228,7 +226,7 @@ def main() -> None:
     finally:
         db.close()
 
-    print(f"seeded {len(items)} opportunities (replaced {removed.rowcount or 0})")
+    print(f"已写入 {len(items)} 条机会（替换 {removed.rowcount or 0} 条）")
     for item in items:
         deadline = item["deadline_at"].astimezone(SHANGHAI).strftime("%Y-%m-%d %H:%M %z")
         print(

@@ -7,6 +7,7 @@ _scheduler: BackgroundScheduler | None = None
 
 
 def run_expire_job() -> int:
+    """执行一次过期扫描，供定时任务调用。"""
     db = SessionLocal()
     try:
         return expire_overdue(db)
@@ -15,6 +16,7 @@ def run_expire_job() -> int:
 
 
 def start_scheduler() -> BackgroundScheduler:
+    """每小时在亚洲/上海时区扫描一次过期记录。"""
     global _scheduler
     if _scheduler is not None:
         return _scheduler

@@ -6,13 +6,13 @@ def test_missing_source_url_is_400(client):
     body.pop("source_url")
     response = client.post("/api/v1/opportunities", json=body)
     assert response.status_code == 400
-    assert response.json()["detail"] == "source_url is required"
+    assert response.json()["detail"] == "source_url 不能为空"
 
 
 def test_blank_source_url_is_400(client):
     response = client.post("/api/v1/opportunities", json=sample(source_url="   "))
     assert response.status_code == 400
-    assert response.json()["detail"] == "source_url is required"
+    assert response.json()["detail"] == "source_url 不能为空"
 
 
 def test_relative_source_url_is_400(client):
@@ -21,7 +21,7 @@ def test_relative_source_url_is_400(client):
         json=sample(source_url="cdutjy.cdut.edu.cn/info/1.htm"),
     )
     assert response.status_code == 400
-    assert "absolute http(s) URL" in response.json()["detail"]
+    assert "http(s)" in response.json()["detail"]
 
 
 def test_invalid_kind_is_422(client):

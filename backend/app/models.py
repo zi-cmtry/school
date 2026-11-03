@@ -11,7 +11,7 @@ SHANGHAI = ZoneInfo("Asia/Shanghai")
 
 
 class UTCDateTime(TypeDecorator):
-    """Store timezone-aware instants as naive UTC, return aware UTC."""
+    """带时区的时刻按 UTC 存成无时区时间，读出时恢复为带 UTC 时区。"""
 
     impl = DateTime
     cache_ok = True

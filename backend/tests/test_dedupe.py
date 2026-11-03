@@ -10,13 +10,13 @@ def test_normalize_case_width_and_space():
 
 
 def test_dedupe_key_uses_shanghai_calendar_date():
-    morning = datetime(2026, 12, 1, 0, 30, tzinfo=timezone.utc)  # 08:30 in Shanghai
-    evening = datetime(2026, 12, 1, 15, 0, tzinfo=timezone.utc)  # 23:00 in Shanghai
-    before = datetime(2026, 11, 30, 15, 30, tzinfo=timezone.utc)  # 23:30 previous day
+    morning = datetime(2026, 12, 1, 0, 30, tzinfo=timezone.utc)  # 上海时间 08:30
+    evening = datetime(2026, 12, 1, 15, 0, tzinfo=timezone.utc)  # 上海时间 23:00
+    before = datetime(2026, 11, 30, 15, 30, tzinfo=timezone.utc)  # 前一日 23:30
     assert make_dedupe_key("海尔", "校招", morning).endswith("|2026-12-01")
     assert make_dedupe_key("海尔", "校招", evening).endswith("|2026-12-01")
     assert make_dedupe_key("海尔", "校招", before).endswith("|2026-11-30")
-    # 2026-11-30 16:30 UTC is 2026-12-01 00:30 in Shanghai.
+    # 2026-11-30 16:30 UTC 是上海时间 2026-12-01 00:30。
     crossed = datetime(2026, 11, 30, 16, 30, tzinfo=timezone.utc)
     assert make_dedupe_key("海尔", "校招", crossed).endswith("|2026-12-01")
 
@@ -73,7 +73,7 @@ def test_duplicate_source_url_is_409(client):
         json=sample(title="另一个标题", company="另一家公司"),
     )
     assert response.status_code == 409
-    assert response.json()["detail"] == "source_url already exists"
+    assert response.json()["detail"] == "source_url 已存在"
 
 
 def test_expired_row_does_not_block_a_new_active(client):

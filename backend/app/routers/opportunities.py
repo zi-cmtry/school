@@ -26,11 +26,11 @@ router = APIRouter()
 
 def require_source_url(source_url: str | None) -> str:
     if source_url is None or not source_url.strip():
-        raise HTTPException(status_code=400, detail="source_url is required")
+        raise HTTPException(status_code=400, detail="source_url 不能为空")
     cleaned = source_url.strip()
     parsed = urlparse(cleaned)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-        raise HTTPException(status_code=400, detail="source_url must be an absolute http(s) URL")
+        raise HTTPException(status_code=400, detail="source_url 必须是绝对的 http(s) 地址")
     return cleaned
 
 
@@ -44,7 +44,7 @@ def _active_conflict(db: Session, dedupe_key: str, exclude_id: int | None = None
     if db.scalars(stmt).first() is not None:
         raise HTTPException(
             status_code=409,
-            detail="active opportunity with the same dedupe_key already exists",
+            detail="已存在相同 dedupe_key 的有效记录",
         )
 
 
@@ -53,7 +53,7 @@ def _url_conflict(db: Session, source_url: str, exclude_id: int | None = None) -
     if exclude_id is not None:
         stmt = stmt.where(Opportunity.id != exclude_id)
     if db.scalars(stmt).first() is not None:
-        raise HTTPException(status_code=409, detail="source_url already exists")
+        raise HTTPException(status_code=409, detail="source_url 已存在")
 
 
 def _commit(db: Session) -> None:
@@ -61,25 +61,29 @@ def _commit(db: Session) -> None:
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=409, detail="opportunity conflicts with an existing record")
+        raise HTTPException(status_code=409, detail="与已有记录冲突")
 
 
-@router.get("/opportunities", response_model=list[OpportunityOut])
+@router.get(
+    "/opportunities",
+    response_model=list[OpportunityOut],
+    tags=["机会"],
+    summary="机会列表",
+    description="默认只返回 status=active 的 internship 与 campus_recruit。传入 kind=competition 时返回竞赛。",
+)
 def list_opportunities(
-    kind: str | None = Query(default=None),
-    status: str | None = Query(default=None),
+    kind: str | None = Query(
+        default=None,
+        description="internship、campus_recruit 或 competition。省略时只含前两类。",
+    ),
+    status: str | None = Query(default=None, description="默认 active"),
     db: Session = Depends(get_db),
 ) -> list[Opportunity]:
-    """Active internships and campus recruiting by default.
-
-    Pass kind=competition for contests. Omit kind to hide competitions.
-    status defaults to active.
-    """
     if kind is not None and kind not in KINDS:
-        raise HTTPException(status_code=400, detail="invalid kind")
+        raise HTTPException(status_code=400, detail="kind 无效")
     effective_status = status or "active"
     if effective_status not in STATUSES:
-        raise HTTPException(status_code=400, detail="invalid status")
+        raise HTTPException(status_code=400, detail="status 无效")
 
     stmt = select(Opportunity).where(Opportunity.status == effective_status)
     if kind is None:
@@ -90,15 +94,27 @@ def list_opportunities(
     return list(db.scalars(stmt))
 
 
-@router.get("/opportunities/{opportunity_id}", response_model=OpportunityOut)
+@router.get(
+    "/opportunities/{opportunity_id}",
+    response_model=OpportunityOut,
+    tags=["机会"],
+    summary="机会详情",
+)
 def get_opportunity(opportunity_id: int, db: Session = Depends(get_db)) -> Opportunity:
     row = db.get(Opportunity, opportunity_id)
     if row is None:
-        raise HTTPException(status_code=404, detail="opportunity not found")
+        raise HTTPException(status_code=404, detail="未找到该机会")
     return row
 
 
-@router.post("/opportunities", response_model=OpportunityOut, status_code=201)
+@router.post(
+    "/opportunities",
+    response_model=OpportunityOut,
+    status_code=201,
+    tags=["机会"],
+    summary="新建机会",
+    description="source_name、source_tier 与 dedupe_key 由服务端根据来源和标题生成。",
+)
 def create_opportunity(payload: OpportunityCreate, db: Session = Depends(get_db)) -> Opportunity:
     source_url = require_source_url(payload.source_url)
     now = datetime.now(timezone.utc)
@@ -133,7 +149,13 @@ def create_opportunity(payload: OpportunityCreate, db: Session = Depends(get_db)
     return row
 
 
-@router.patch("/opportunities/{opportunity_id}", response_model=OpportunityOut)
+@router.patch(
+    "/opportunities/{opportunity_id}",
+    response_model=OpportunityOut,
+    tags=["机会"],
+    summary="更新机会",
+    description="只更新请求体里出现的字段，并重新计算 dedupe_key。",
+)
 def update_opportunity(
     opportunity_id: int,
     payload: OpportunityUpdate,
@@ -141,7 +163,7 @@ def update_opportunity(
 ) -> Opportunity:
     row = db.get(Opportunity, opportunity_id)
     if row is None:
-        raise HTTPException(status_code=404, detail="opportunity not found")
+        raise HTTPException(status_code=404, detail="未找到该机会")
 
     data = payload.model_dump(exclude_unset=True)
     if not data:
@@ -172,17 +194,28 @@ def update_opportunity(
     return row
 
 
-@router.delete("/opportunities/{opportunity_id}", status_code=204)
+@router.delete(
+    "/opportunities/{opportunity_id}",
+    status_code=204,
+    tags=["机会"],
+    summary="删除机会",
+)
 def delete_opportunity(opportunity_id: int, db: Session = Depends(get_db)) -> Response:
     row = db.get(Opportunity, opportunity_id)
     if row is None:
-        raise HTTPException(status_code=404, detail="opportunity not found")
+        raise HTTPException(status_code=404, detail="未找到该机会")
     db.delete(row)
     db.commit()
     return Response(status_code=204)
 
 
-@router.post("/admin/jobs/expire", response_model=ExpireResult)
+@router.post(
+    "/admin/jobs/expire",
+    response_model=ExpireResult,
+    tags=["管理"],
+    summary="执行过期任务",
+    description="把 deadline_at 已过的 active 记录标为 expired。与每小时的定时任务相同。",
+)
 def trigger_expire(db: Session = Depends(get_db)) -> ExpireResult:
     count = expire_overdue(db)
     return ExpireResult(expired=count)

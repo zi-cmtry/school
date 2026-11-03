@@ -7,7 +7,7 @@ from app.models import Opportunity
 
 
 def expire_overdue(db: Session, now: datetime | None = None) -> int:
-    """Mark active opportunities past their deadline as expired. Returns the count."""
+    """把已过截止时间的 active 记录标为 expired，并返回条数。"""
     if now is None:
         now = datetime.now(timezone.utc)
     elif now.tzinfo is None:

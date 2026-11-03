@@ -1,3 +1,4 @@
+# 成都理工大学可信来源。tier 与 applies_to 使用接口枚举，保持英文。
 school: 成都理工大学
 sources:
   - tier: official
