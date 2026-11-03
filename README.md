@@ -20,7 +20,7 @@ backend/app/db.py                   SQLite 引擎
 backend/app/routers/opportunities.py
 backend/app/services/dedupe.py      计算 dedupe_key
 backend/app/services/expire.py      按截止时间过期
-backend/app/services/sources.py     根据主机名得到 source_name / source_tier
+backend/app/services/sources.py     根据链接和类别得到 source_name / source_tier
 backend/app/jobs/scheduler.py       每小时执行一次过期任务
 backend/app/config/school.yaml
 backend/scripts/seed.py
@@ -41,7 +41,7 @@ backend/tests/
 | status | `active`、`expired`、`duplicate`、`withdrawn` |
 | source_tier | `official`、`campus_channel`、`student_submit`、`unverified` |
 
-`source_name` 与 `source_tier` 由 `source_url` 的主机名和 `kind` 对照 `school.yaml` 得出。主机只在 `applies_to` 列出的类别上可信，其余为 `unverified`。
+`source_name` 与 `source_tier` 由 `source_url` 和 `kind` 对照 `school.yaml` 得出，不采用客户端提交的级别。精确主机只在 `applies_to` 列出的类别上可信。企业自己的校招或招聘页在 `internship`、`campus_recruit` 上复用 `campus_channel`（不新增枚举，来源名称记为「企业校招」）。其余为 `unverified`。
 
 ## 规则
 
@@ -62,6 +62,15 @@ backend/tests/
 - 计算机学院竞赛 — `cim.cdut.edu.cn` — `campus_channel` — `competition`
 - 材料与化学化工学院 — `cmcc.cdut.edu.cn` — `campus_channel` — `competition`
 - 学科竞赛平台(moocollege) — `scgxxkjs.moocollege.com`、`cp.moocollege.com` — `campus_channel` — `competition`
+- 企业校招 — 企业自己的招聘页 — `campus_channel` — `internship`、`campus_recruit`
+
+企业校招不新写枚举，和竞赛白名单一样落在 `campus_channel`。链接满足下面任一条件，且类别是实习或校招时，来源名称写「企业校招」：
+
+- 主机名第一段是 `jobs`、`zhaopin`、`maker`、`careers`、`campus`（比较前去掉开头的 `www`）。例如 `jobs.hisense.com`、`maker.haier.net`、`campus.mihoyo.com`。
+- 路径里含有 `campus`（例如 `/campus`、`/campus-recruit`）。只出现在查询串里不算。
+- 主机写在 `school.yaml` 的企业招聘名单里，或是 `hotjob.cn`、`zhiye.com` 上的企业子域（如 `cngr.hotjob.cn`、`vistar.zhiye.com`、`job.sinopec.com`、`xz.duoyi.com`）。`www` 和裸域不算，所以 `www.hotjob.cn`、`zhiye.com` 仍是未核验。
+
+以下仍是 `unverified`：二手聚合或转载站（应届生求职网、E职科技、智联、前程无忧等）即使路径里带 `campus` 或主机以 `jobs.` 开头；空白或缺失的 `source_url`（接口返回 400）；主机和类别对不上，例如就业网上的竞赛、竞赛白名单站点上的岗位。服务不抓取网页，也不编造岗位。
 
 ## 运行
 

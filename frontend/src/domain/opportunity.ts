@@ -7,7 +7,7 @@ export type SourceTier = (typeof SOURCE_TIERS)[number]
 export const OPPORTUNITY_STATUSES = ["active", "expired", "duplicate", "withdrawn"] as const
 export type OpportunityStatus = (typeof OPPORTUNITY_STATUSES)[number]
 
-/** 与 backend/app/config/school.yaml 一致。只有 kind 落在 applies_to 里才信任该 host。 */
+/** 与 backend/app/config/school.yaml 的精确主机一致。只有 kind 落在 applies_to 里才信任该 host。 */
 export const COMPETITION_WHITELIST_HOSTS = [
   "aao.cdut.edu.cn",
   "cim.cdut.edu.cn",
@@ -185,13 +185,76 @@ const SOURCE_RULES: { hosts: string[]; kinds: OpportunityKind[]; tier: SourceTie
   },
 ]
 
-/** 来源名称和层级只由 host + kind 决定，调用方不能指定。 */
+/** 与 school.yaml 的「企业校招」规则一致。比较前已去掉开头的 www。 */
+const ENTERPRISE_HOSTS = [
+  "maker.haier.net",
+  "jobs.hisense.com",
+  "cngr.hotjob.cn",
+  "job.sinopec.com",
+  "xz.duoyi.com",
+  "campus.mihoyo.com",
+] as const
+
+const ENTERPRISE_HOST_LABELS = ["jobs", "zhaopin", "maker", "careers", "campus"] as const
+
+const ENTERPRISE_HOST_SUFFIXES = [".hotjob.cn", ".zhiye.com"] as const
+
+/** 二手聚合或转载站。与 school.yaml 的 aggregators 一致。 */
+const AGGREGATOR_DOMAINS = [
+  "yingjiesheng.com",
+  "ezhizhaopin.com",
+  "51job.com",
+  "zhaopin.com",
+  "liepin.com",
+  "bosszhipin.com",
+  "zhipin.com",
+  "lagou.com",
+  "nowcoder.com",
+  "shixiseng.com",
+  "gaoxiaojob.com",
+  "jobui.com",
+  "chinahr.com",
+  "kanzhun.com",
+  "jobs.com",
+  "linkedin.com",
+  "indeed.com",
+  "glassdoor.com",
+] as const
+
+function isAggregatorHost(host: string): boolean {
+  return AGGREGATOR_DOMAINS.some((domain) => host === domain || host.endsWith(`.${domain}`))
+}
+
+function isCompanyAtsHost(host: string): boolean {
+  return ENTERPRISE_HOST_SUFFIXES.some((suffix) => {
+    if (!host.endsWith(suffix)) return false
+    const left = host.slice(0, -suffix.length)
+    if (!left || left.endsWith(".")) return false
+    const first = left.split(".")[0]
+    return first !== "www" && first !== "m"
+  })
+}
+
+function isEnterpriseCareerUrl(host: string, pathname: string): boolean {
+  if ((ENTERPRISE_HOSTS as readonly string[]).includes(host)) return true
+  const first = host.split(".").filter(Boolean)[0] ?? ""
+  if ((ENTERPRISE_HOST_LABELS as readonly string[]).includes(first)) return true
+  if (isCompanyAtsHost(host)) return true
+  return pathname.toLowerCase().includes("campus")
+}
+
+/** 来源名称和层级只由链接和类型决定，调用方不能指定。 */
 export function resolveSource(sourceUrl: string, kind: OpportunityKind): { source_name: string; source_tier: SourceTier } {
-  const host = bareHost(new URL(sourceUrl).hostname)
+  const url = new URL(sourceUrl)
+  const host = bareHost(url.hostname)
   for (const rule of SOURCE_RULES) {
     if (!rule.hosts.includes(host)) continue
     if (rule.kinds.includes(kind)) return { source_name: rule.name, source_tier: rule.tier }
     return { source_name: host || "unknown", source_tier: "unverified" }
+  }
+  const jobKind = kind === "internship" || kind === "campus_recruit"
+  if (jobKind && !isAggregatorHost(host) && isEnterpriseCareerUrl(host, url.pathname)) {
+    return { source_name: "企业校招", source_tier: "campus_channel" }
   }
   return { source_name: host || "unknown", source_tier: "unverified" }
 }

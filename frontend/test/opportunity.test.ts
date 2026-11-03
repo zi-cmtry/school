@@ -111,6 +111,19 @@ describe("录入校验", () => {
     assert.equal(resolveSource("https://aao.cdut.edu.cn/info/1442/7000.htm", "competition").source_tier, "campus_channel")
     assert.equal(resolveSource("https://aao.cdut.edu.cn/info/1.htm", "internship").source_tier, "unverified")
     assert.equal(resolveSource("https://example.com/job", "internship").source_tier, "unverified")
+    assert.deepEqual(resolveSource("https://jobs.hisense.com/campus", "campus_recruit"), {
+      source_name: "企业校招",
+      source_tier: "campus_channel",
+    })
+    assert.equal(resolveSource("https://maker.haier.net/", "internship").source_tier, "campus_channel")
+    assert.equal(resolveSource("https://cngr.hotjob.cn/position", "campus_recruit").source_tier, "campus_channel")
+    assert.equal(resolveSource("https://vistar.zhiye.com/", "campus_recruit").source_name, "企业校招")
+    assert.equal(resolveSource("https://company.example/campus-recruit", "internship").source_tier, "campus_channel")
+    assert.equal(resolveSource("https://jobs.hisense.com/campus", "competition").source_tier, "unverified")
+    assert.equal(resolveSource("https://www.zhaopin.com/campus/index.html", "campus_recruit").source_tier, "unverified")
+    assert.equal(resolveSource("https://my.yingjiesheng.com/xjh.html", "campus_recruit").source_tier, "unverified")
+    assert.equal(resolveSource("https://ezhizhaopin.com/school.php?id=2233", "campus_recruit").source_tier, "unverified")
+    assert.equal(resolveSource("https://example.com/search?q=campus", "campus_recruit").source_tier, "unverified")
     const detail = "https://cp.moocollege.com/home/competition/details?competitionId=107706"
     assert.deepEqual(resolveSource(detail, "competition"), {
       source_name: "学科竞赛平台(moocollege)",
