@@ -113,6 +113,38 @@ def test_unknown_host_is_unverified(client):
     assert body["source_name"] == "example.com"
 
 
+def test_enterprise_career_host_is_campus_channel(client):
+    """企业自己的招聘页复用 campus_channel，展示上等同企业校招。"""
+    response = client.post(
+        "/api/v1/opportunities",
+        json=sample(
+            title="海信集团校园招聘",
+            kind="campus_recruit",
+            company="海信集团",
+            source_url="https://jobs.hisense.com/campus",
+        ),
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["source_tier"] == "campus_channel"
+    assert body["source_name"] == "企业校招"
+
+
+def test_aggregator_campus_path_stays_unverified(client):
+    response = client.post(
+        "/api/v1/opportunities",
+        json=sample(
+            title="转载校招",
+            company="转载站",
+            source_url="https://www.zhaopin.com/campus/index.html",
+        ),
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["source_tier"] == "unverified"
+    assert body["source_name"] == "www.zhaopin.com"
+
+
 def test_cp_moocollege_detail_is_campus_channel(client):
     """种子详情页必须是 campus_channel，不能是 unverified。"""
     url = "https://cp.moocollege.com/home/competition/details?competitionId=107706"

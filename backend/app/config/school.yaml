@@ -1,4 +1,5 @@
 # 成都理工大学可信来源。tier 与 applies_to 使用接口枚举，保持英文。
+# 企业自己的校招/招聘页不新增枚举，复用 campus_channel，来源名称写「企业校招」。
 school: 成都理工大学
 sources:
   - tier: official
@@ -24,3 +25,43 @@ sources:
       - cp.moocollege.com
     applies_to:
       - competition
+  - tier: campus_channel
+    name: 企业校招
+    applies_to: [internship, campus_recruit]
+    # 种子里已经出现、或产品点名的企业招聘主机。
+    # jobs.* / maker.* / campus.* 也会被下面的 host_labels 命中，这里写明便于对照。
+    hosts:
+      - maker.haier.net
+      - jobs.hisense.com
+      - cngr.hotjob.cn
+      - job.sinopec.com
+      - xz.duoyi.com
+      - campus.mihoyo.com
+    # 主机名第一段（比较前去掉开头的 www），对应 jobs.*、zhaopin.*、maker.*、careers.*、campus.*。
+    host_labels: [jobs, zhaopin, maker, careers, campus]
+    # 路径中出现这些片段即视为企业校招页，例如 /campus、/campus-recruit。查询串不算。
+    path_markers: [campus]
+    # 招聘系统上的企业子域。不含 www、m 和裸域，例如 cngr.hotjob.cn、vistar.zhiye.com。
+    host_suffixes: [.hotjob.cn, .zhiye.com]
+
+# 二手聚合或转载站。只拿这些链接当来源时保持 unverified，
+# 即使路径里带 campus，或主机名以 jobs. 开头。
+aggregators:
+  - yingjiesheng.com
+  - ezhizhaopin.com
+  - 51job.com
+  - zhaopin.com
+  - liepin.com
+  - bosszhipin.com
+  - zhipin.com
+  - lagou.com
+  - nowcoder.com
+  - shixiseng.com
+  - gaoxiaojob.com
+  - jobui.com
+  - chinahr.com
+  - kanzhun.com
+  - jobs.com
+  - linkedin.com
+  - indeed.com
+  - glassdoor.com

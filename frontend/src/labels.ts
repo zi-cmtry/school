@@ -22,9 +22,9 @@ export const TIER_LABEL: Record<SourceTier, string> = {
 
 export const TIER_HINT: Record<SourceTier, string> = {
   official: "就业信息网上的实习或校招",
-  campus_channel: "白名单站点上的竞赛",
+  campus_channel: "白名单站点上的竞赛，或企业自己的校招/招聘页（企业校招）",
   student_submit: "同学提交，当前接口很少使用这一档",
-  unverified: "链接和类型对不上，或站点不在白名单里",
+  unverified: "链接和类型对不上，站点不在白名单里，或只是转载聚合页",
 }
 
 const BEIJING = "Asia/Shanghai"
