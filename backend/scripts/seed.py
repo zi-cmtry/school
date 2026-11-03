@@ -1,7 +1,9 @@
 """写入一组可重复执行的校园通知。
 
 截止时间相对运行时刻计算：一条校招已经过期，用于演示过期任务，其余在未来。
-标题和链接来自已发布通知。再次运行会按 source_url 替换这些记录。
+标题和链接来自已发布通知。岗位按全校专业混排，覆盖光电、土木水利、材料、
+石油工程、计算机，以及数据分析、营销和运营，不按单一学院过滤。
+再次运行会按 source_url 替换这些记录。
 """
 
 from __future__ import annotations
@@ -89,19 +91,43 @@ def fixtures() -> list[dict]:
             expected_tier="official",
         ),
         record(
-            title="海尔智家2026届校园招聘",
+            title="成都辰显光电有限公司2027届应届毕业生招聘简章",
             kind="campus_recruit",
-            company="海尔智家",
-            days=50,
+            company="成都辰显光电有限公司",
+            days=45,
             source_url=(
-                "https://cdutjy.cdut.edu.cn/data/mcit_editor/20251015/"
-                "2026%E6%B5%B7%E5%B0%94%E6%99%BA%E5%AE%B6%E6%A0%A1%E5%9B%AD%E6%8B%9B%E8%81%98"
+                "https://cdutjy.cdut.edu.cn/data/mcit_editor/20260909/"
+                "%E6%88%90%E9%83%BD%E8%BE%B0%E6%98%BE%E5%85%89%E7%94%B5%E6%9C%89%E9%99%90"
+                "%E5%85%AC%E5%8F%B8%E2%80%942027%E5%B1%8A%E6%A0%A1%E5%9B%AD%E6%8B%9B%E8%81%98"
                 "%E6%8B%9B%E8%81%98%E7%AE%80%E7%AB%A0.pdf"
             ),
-            role_tags=["研发", "营销", "校招"],
-            location="青岛",
-            apply_url="https://maker.haier.net/smart_home",
-            summary="海尔智家 2026 届全球校园招聘，研发、智造、营销等方向，网申入口 maker.haier.net。",
+            role_tags=["光电", "微电子", "材料"],
+            location="成都",
+            apply_url="https://vistar.zhiye.com/",
+            summary=(
+                "成都辰显光电 2027 届应届毕业生招聘，面向 Micro-LED 显示。"
+                "岗位含电路、结构、光学设计，巨量转移与阵列工艺，以及财务、计划物料和采购。"
+                "工作地成都，网申入口 vistar.zhiye.com。"
+            ),
+            expected_tier="official",
+        ),
+        record(
+            title="中国电建集团成都院2027届校园招聘公告",
+            kind="campus_recruit",
+            company="中国电建集团成都院",
+            days=55,
+            source_url=(
+                "https://cdutjy.cdut.edu.cn/data/mcit_editor/20260929/"
+                "%E4%B8%AD%E5%9B%BD%E7%94%B5%E5%BB%BA%E6%88%90%E9%83%BD%E9%99%A2"
+                "2027%E5%B1%8A%E6%A0%A1%E5%9B%AD%E6%8B%9B%E8%81%98%E5%85%AC%E5%91%8A.pdf"
+            ),
+            role_tags=["土木工程", "水利水电", "地质工程"],
+            location="成都",
+            apply_url="http://www.hotjob.cn/wt/chidi/web/index?brandCode=1",
+            summary=(
+                "中国电建集团成都院 2027 届校园招聘，专业含土木工程、水利水电工程、"
+                "地质工程、岩土工程等，学历为硕士及以上。单位注册在成都。"
+            ),
             expected_tier="official",
         ),
         record(
@@ -130,26 +156,53 @@ def fixtures() -> list[dict]:
                 "2026%E5%B1%8A%E6%A0%A1%E6%8B%9B%E7%AE%80%E7%AB%A0-250815.pdf"
             ),
             role_tags=["材料", "研发", "校招"],
-            location="长沙",
+            location="湖南、贵州、广西",
             apply_url="https://cngr.hotjob.cn",
-            summary="中伟集团 2026 届校园招聘，覆盖科创研发、矿业资源、信息技术等方向。",
+            summary=(
+                "中伟集团 2026 届校园招聘，覆盖科创研发、矿业资源、信息技术等方向，"
+                "工作地含湖南、贵州、广西。"
+            ),
             expected_tier="official",
         ),
         record(
-            title="学大教育2026届校园招聘",
+            title="华润数科2025届校园招聘",
             kind="campus_recruit",
-            company="学大教育",
+            company="华润数科",
+            days=50,
+            source_url=(
+                "https://cdutjy.cdut.edu.cn/data/mcit_editor/20240930/"
+                "0-%E5%8D%8E%E6%B6%A6%E6%95%B0%E7%A7%91%E6%8E%A7%E8%82%A1%E6%9C%89%E9%99%90"
+                "%E5%85%AC%E5%8F%B82025%E5%B1%8A%E6%A0%A1%E5%9B%AD%E6%8B%9B%E8%81%98%E7%AE%80"
+                "%E7%AB%A0%E3%80%90%E5%90%AB%E5%B2%97%E4%BD%8D%E4%BB%8B%E7%BB%8D%E3%80%91.pdf"
+            ),
+            role_tags=["数据分析", "咨询", "运营"],
+            location="深圳、成都等",
+            apply_url="https://www.crdigital.com.cn/",
+            summary=(
+                "华润数科 2025 届校园招聘。部门层含助理数据师、助理咨询经理、"
+                "助理运营经理、助理产品经理，并写明以上岗位同步招聘 2026 届实习生。"
+                "工作地点含深圳、成都等。"
+            ),
+            expected_tier="official",
+        ),
+        record(
+            title="中石化胜利石油工程有限公司2027年度校园招聘简章",
+            kind="campus_recruit",
+            company="中石化胜利石油工程有限公司",
             days=-14,
             source_url=(
-                "https://cdutjy.cdut.edu.cn/data/mcit_editor/20260318/"
-                "%E2%80%9C%E9%80%90%E6%A2%A6%E5%AD%A6%E6%B5%B7%20%C2%B7%E5%A4%A7%E6%9C%89"
-                "%E5%8F%AF%E4%B8%BA%E2%80%9D%E5%AD%A6%E5%A4%A7%E6%95%99%E8%82%B2"
-                "2026%E5%B1%8A%E6%A0%A1%E5%9B%AD%E6%8B%9B%E8%81%98%E7%AE%80%E7%AB%A0.pdf"
+                "https://cdutjy.cdut.edu.cn/data/mcit_editor/20260930/"
+                "%E4%B8%AD%E7%9F%B3%E5%8C%96%E8%83%9C%E5%88%A9%E7%9F%B3%E6%B2%B9%E5%B7%A5"
+                "%E7%A8%8B%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B82027%E5%B9%B4%E5%BA%A6"
+                "%E6%A0%A1%E5%9B%AD%E6%8B%9B%E8%81%98%E7%AE%80%E7%AB%A0.pdf"
             ),
-            role_tags=["教师", "校招"],
-            location="成都",
-            apply_url="https://www.xueda.com",
-            summary="学大教育西南区教师校招。截止时间设在过去，供过期任务演示；调用 expire 后应变为 expired。",
+            role_tags=["石油工程", "地质", "校招"],
+            location="山东东营",
+            apply_url="http://job.sinopec.com",
+            summary=(
+                "中石化胜利石油工程 2027 年度校园招聘，含石油工程、地质及综合商务管理等岗位，"
+                "工作地以山东东营为主。截止时间设在过去，供过期任务演示；调用 expire 后应变为 expired。"
+            ),
             expected_tier="official",
         ),
         record(
