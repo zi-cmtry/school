@@ -4,6 +4,8 @@
 
 记录通过本接口或 `make seed` 写入。服务不抓取网页，也不生成文案。
 
+前端在 `frontend/`。先在本目录执行 `make seed` 和 `make run`，再另开终端进入 `frontend` 执行 `npm i` 和 `npm run dev`。页面说明见 `frontend/README.md`。
+
 ## 技术栈
 
 Python 3.12、FastAPI、SQLAlchemy 2、SQLite、APScheduler。
