@@ -52,7 +52,7 @@ export function SubscriptionsPage() {
   return (
     <section className="panel">
       <p className="lede">
-        订阅只是本周的占位。勾选想关注的类型后保存在这台浏览器里，不会推送，也不会筛选或重排求职和竞赛列表。
+        订阅只是本周的占位。勾选想关注的类型后保存在这台浏览器里，不会推送，也不会筛选或重排实习、校招和竞赛。
       </p>
       {saved ? <p className="banner note">已保存在这台浏览器。列表顺序没有变化。</p> : null}
       <form className="form" onSubmit={onSubmit}>

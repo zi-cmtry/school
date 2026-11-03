@@ -1,44 +1,46 @@
 import { useEffect, useMemo, useState } from "react"
-import { Navigate, useSearchParams } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 import { apiBaseUrl } from "../api/config"
 import { explainApiError } from "../api/messages"
-import {
-  competitionListQuery,
-  jobListQuery,
-  listOpportunities,
-  listRequestPath,
-} from "../api/opportunities"
+import { kindListQuery, listOpportunities, listRequestPath } from "../api/opportunities"
 import { OpportunityCard } from "../components/OpportunityCard"
-import { ApiError, isKind, isStatus, type Opportunity, type OpportunityKind } from "../domain/opportunity"
+import { ApiError, isStatus, type Opportunity, type OpportunityKind } from "../domain/opportunity"
+import { hideOpportunity, omitHidden, readHidden, type HiddenOpportunity } from "../hidden"
+import { KIND_PAGE_TITLE } from "../lists"
 
-type Stream = "jobs" | "competitions"
+const LEDE: Record<OpportunityKind, string> = {
+  internship:
+    "只请求实习。校招和竞赛不会出现在这里。学院、专业、年级保存在这台浏览器，不会筛选、不会重排，也不会编造岗位。",
+  campus_recruit:
+    "只请求校招。实习和竞赛不会出现在这里。学院、专业、年级保存在这台浏览器，不会筛选、不会重排，也不会编造岗位。",
+  competition:
+    "只请求竞赛。白名单站点包括教务处、管理科学学院、材料与化学化工学院，以及四川省高校学科竞赛平台（scgxxkjs.moocollege.com 与 cp.moocollege.com）。",
+}
 
-export function ListPage({ stream }: { stream: Stream }) {
+export function ListPage({ kind }: { kind: OpportunityKind }) {
   const [params, setParams] = useSearchParams()
   const [items, setItems] = useState<Opportunity[] | null>(null)
+  const [hidden, setHidden] = useState<HiddenOpportunity[]>(() => readHidden())
   const [source, setSource] = useState<"api" | "mock" | "">("")
   const [error, setError] = useState("")
   const now = useMemo(() => new Date(), [])
   const created = params.get("created") ?? ""
-
-  const kindParam = params.get("kind")
-  const redirectToCompetitions = stream === "jobs" && kindParam === "competition"
-  const kind: OpportunityKind | null =
-    stream === "jobs" && kindParam && isKind(kindParam) && kindParam !== "competition" ? kindParam : null
   const statusParam = params.get("status")
   const status = statusParam && isStatus(statusParam) ? statusParam : null
-  const query = stream === "jobs" ? jobListQuery(kind, status) : competitionListQuery(status)
+  const query = kindListQuery(kind, status)
   const requestPath = listRequestPath(query)
+  const title = KIND_PAGE_TITLE[kind]
 
   useEffect(() => {
-    document.title = stream === "jobs" ? "求职 · 校园可信信息" : "竞赛 · 校园可信信息"
-  }, [stream])
+    document.title = `${title} · 校园可信信息`
+  }, [title])
 
   useEffect(() => {
-    if (redirectToCompetitions) return
     let cancelled = false
+    setItems(null)
+    setSource("")
     setError("")
-    listOpportunities(query)
+    listOpportunities(kindListQuery(kind, status))
       .then((result) => {
         if (cancelled) return
         setItems(result.items)
@@ -52,14 +54,12 @@ export function ListPage({ stream }: { stream: Stream }) {
     return () => {
       cancelled = true
     }
-  }, [requestPath, redirectToCompetitions])
+  }, [kind, status])
 
   useEffect(() => {
     if (!created || !items?.some((item) => item.id === created)) return
     document.getElementById(`item-${created}`)?.scrollIntoView({ block: "center" })
   }, [created, items])
-
-  if (redirectToCompetitions) return <Navigate to="/competitions" replace />
 
   function patch(mutate: (next: URLSearchParams) => void) {
     setParams((prev) => {
@@ -70,40 +70,19 @@ export function ListPage({ stream }: { stream: Stream }) {
     })
   }
 
+  function dismiss(item: Opportunity) {
+    setHidden(hideOpportunity({ id: item.id, title: item.title }))
+  }
+
   const showingExpired = status === "expired"
+  const visible = items ? omitHidden(items, hidden) : null
+  const hiddenHere = items && visible ? items.length - visible.length : 0
 
   return (
     <section>
       <div className="panel">
-        <p className="lede">
-          {stream === "jobs"
-            ? "求职页请求默认列表：进行中的实习和校招，不含竞赛。个人设置不会改变这里的顺序。"
-            : "竞赛页只请求竞赛。白名单站点包括教务处、管理科学学院、材料与化学化工学院，以及四川省高校学科竞赛平台（scgxxkjs.moocollege.com 与 cp.moocollege.com）。"}
-        </p>
+        <p className="lede">{LEDE[kind]}</p>
         <div className="filters" role="group" aria-label="筛选">
-          {stream === "jobs" ? (
-            <>
-              <button type="button" className="chip" aria-pressed={kind === null} onClick={() => patch((next) => next.delete("kind"))}>
-                全部求职
-              </button>
-              <button
-                type="button"
-                className="chip"
-                aria-pressed={kind === "internship"}
-                onClick={() => patch((next) => next.set("kind", "internship"))}
-              >
-                实习
-              </button>
-              <button
-                type="button"
-                className="chip"
-                aria-pressed={kind === "campus_recruit"}
-                onClick={() => patch((next) => next.set("kind", "campus_recruit"))}
-              >
-                校招
-              </button>
-            </>
-          ) : null}
           <button
             type="button"
             className="chip"
@@ -118,7 +97,8 @@ export function ListPage({ stream }: { stream: Stream }) {
             已截止
           </button>
         </div>
-        <p className="count">{items ? `${items.length} 条` : "加载中"}</p>
+        <p className="count">{visible ? `${visible.length} 条` : "加载中"}</p>
+        {hiddenHere > 0 ? <p className="tier-preview">有 {hiddenHere} 条已标为不感兴趣，可在设置里解除。</p> : null}
         <p className="request">本次请求 GET {requestPath}</p>
         <p className="tier-preview">
           {source === "api" ? `数据来自后端 ${apiBaseUrl()}` : source === "mock" ? "后端未连接，当前显示本地示例。" : ""}
@@ -127,20 +107,22 @@ export function ListPage({ stream }: { stream: Stream }) {
 
       {error ? <p className="banner">{error}</p> : null}
 
-      {items && items.length === 0 ? (
+      {visible && visible.length === 0 ? (
         <div className="empty">
-          <h2>这条筛选下没有信息</h2>
+          <h2>{hiddenHere > 0 && items && items.length > 0 ? "这些信息你都标成了不感兴趣" : "这条筛选下没有信息"}</h2>
           <p>
-            {showingExpired
-              ? "没有已截止的记录。可以关掉「已截止」，或到录入页补一条带来源链接的信息。"
-              : "默认只显示进行中的记录。已经截止的内容在「已截止」里。"}
+            {hiddenHere > 0 && items && items.length > 0
+              ? "服务器上的记录还在。到设置里可以解除。"
+              : showingExpired
+                ? "没有已截止的记录。可以关掉「已截止」。"
+                : "默认只显示进行中的记录。已经截止的内容在「已截止」里。"}
           </p>
         </div>
       ) : null}
 
       <div className="stack">
-        {items?.map((item) => (
-          <OpportunityCard key={item.id} item={item} now={now} highlighted={item.id === created} />
+        {visible?.map((item) => (
+          <OpportunityCard key={item.id} item={item} now={now} highlighted={item.id === created} onDismiss={dismiss} />
         ))}
       </div>
     </section>

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import { describe, it } from "node:test"
 import { explainApiError, explainFieldError } from "../src/api/messages.ts"
-import { competitionListQuery, jobListQuery } from "../src/api/opportunities.ts"
+import { kindListQuery } from "../src/api/opportunities.ts"
 import { opportunityCollectionPath } from "../src/api/paths.ts"
 import { seedOpportunities } from "../src/data/seed.ts"
 import {
@@ -12,35 +13,85 @@ import {
   resolveSource,
   validateAndBuild,
 } from "../src/domain/opportunity.ts"
-import { SAMPLE_PROFILE, parseProfile } from "../src/profile.ts"
+import { KIND_PATH, listPath } from "../src/lists.ts"
+import { SAMPLE_PROFILE, parseProfile, profileFromGuide, saveProfile } from "../src/profile.ts"
+import { memoryStore } from "../src/storage.ts"
 
 const now = new Date("2026-11-03T11:04:00.000Z")
 
-describe("列表路径", () => {
-  it("求职默认不带参数，竞赛只带 kind=competition", () => {
-    assert.equal(opportunityCollectionPath(jobListQuery(null, null)), "/api/v1/opportunities")
-    assert.equal(opportunityCollectionPath(jobListQuery("internship", null)), "/api/v1/opportunities?kind=internship")
-    assert.equal(opportunityCollectionPath(competitionListQuery(null)), "/api/v1/opportunities?kind=competition")
+describe("三个入口的列表路径", () => {
+  it("实习、校招、竞赛各自带 kind，已截止可以一起传", () => {
+    assert.equal(opportunityCollectionPath(kindListQuery("internship", null)), "/api/v1/opportunities?kind=internship")
     assert.equal(
-      opportunityCollectionPath(competitionListQuery("expired")),
+      opportunityCollectionPath(kindListQuery("campus_recruit", null)),
+      "/api/v1/opportunities?kind=campus_recruit",
+    )
+    assert.equal(opportunityCollectionPath(kindListQuery("competition", null)), "/api/v1/opportunities?kind=competition")
+    assert.equal(
+      opportunityCollectionPath(kindListQuery("internship", "expired")),
+      "/api/v1/opportunities?kind=internship&status=expired",
+    )
+    assert.equal(
+      opportunityCollectionPath(kindListQuery("campus_recruit", "expired")),
+      "/api/v1/opportunities?kind=campus_recruit&status=expired",
+    )
+    assert.equal(
+      opportunityCollectionPath(kindListQuery("competition", "expired")),
       "/api/v1/opportunities?kind=competition&status=expired",
     )
   })
 
-  it("默认只要进行中的实习和校招", () => {
-    const rows = filterOpportunities(seedOpportunities, jobListQuery(null, null))
-    assert.equal(rows.length, 5)
-    assert.ok(rows.every((item) => item.kind !== "competition"))
-    assert.ok(rows.every((item) => item.status === "active"))
+  it("画像保存之后，列表查询仍然只有 kind 和 status", () => {
+    const store = memoryStore()
+    const profile = profileFromGuide({ college: "管理科学学院", major: "大数据管理与应用", grade: "大二" })
+    assert.ok(profile)
+    saveProfile(profile, store)
+    const query = kindListQuery("campus_recruit", null)
+    assert.deepEqual(query, { kind: "campus_recruit" })
+    assert.equal(Object.hasOwn(query, "college"), false)
+    assert.equal(Object.hasOwn(query, "major"), false)
+    assert.equal(Object.hasOwn(query, "grade"), false)
+  })
+
+  it("实习和校招结果里没有竞赛", () => {
+    const internships = filterOpportunities(seedOpportunities, kindListQuery("internship", null))
+    const campus = filterOpportunities(seedOpportunities, kindListQuery("campus_recruit", null))
+    assert.ok(internships.every((item) => item.kind === "internship"))
+    assert.equal(campus.length, 5)
+    assert.ok(campus.every((item) => item.kind === "campus_recruit"))
+    assert.equal(filterOpportunities(seedOpportunities, kindListQuery("competition", null)).length, 0)
   })
 
   it("已截止的竞赛仍能按状态查到两条样例", () => {
-    assert.equal(filterOpportunities(seedOpportunities, competitionListQuery(null)).length, 0)
-    const rows = filterOpportunities(seedOpportunities, competitionListQuery("expired"))
+    const rows = filterOpportunities(seedOpportunities, kindListQuery("competition", "expired"))
     assert.deepEqual(
       rows.map((item) => item.source_url).sort(),
       ["https://aao.cdut.edu.cn/info/1442/7000.htm", "https://cim.cdut.edu.cn/info/1098/6232.htm"].sort(),
     )
+    const expiredJobs = filterOpportunities(seedOpportunities, kindListQuery("internship", "expired"))
+    assert.ok(expiredJobs.length >= 1)
+    assert.ok(expiredJobs.every((item) => item.kind === "internship" && item.status === "expired"))
+  })
+
+  it("页面路径按类型分开，录入不出现在主导航", () => {
+    assert.equal(listPath("internship"), "/internships")
+    assert.equal(listPath("campus_recruit", "expired", "9"), "/campus?status=expired&created=9")
+    assert.equal(listPath("competition"), "/competitions")
+    assert.equal(KIND_PATH.campus_recruit, "/campus")
+    const shell = readFileSync(new URL("../src/components/Shell.tsx", import.meta.url), "utf8")
+    assert.match(shell, /实习/)
+    assert.match(shell, /校招/)
+    assert.match(shell, /竞赛/)
+    assert.doesNotMatch(shell, /求职/)
+    assert.doesNotMatch(shell, /录入/)
+    assert.doesNotMatch(shell, /\/submit/)
+    const app = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8")
+    assert.match(app, /path="\/submit"/)
+    const card = readFileSync(new URL("../src/components/OpportunityCard.tsx", import.meta.url), "utf8")
+    assert.match(card, /不感兴趣/)
+    assert.match(card, /source_url/)
+    assert.match(card, /source_name/)
+    assert.match(card, /TIER_LABEL/)
   })
 })
 
