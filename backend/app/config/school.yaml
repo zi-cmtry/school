@@ -19,5 +19,8 @@ sources:
     applies_to: [competition]
   - tier: campus_channel
     name: 学科竞赛平台(moocollege)
-    hosts: [scgxxkjs.moocollege.com, cp.moocollege.com]
-    applies_to: [competition]
+    hosts:
+      - scgxxkjs.moocollege.com
+      - cp.moocollege.com
+    applies_to:
+      - competition

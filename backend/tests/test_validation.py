@@ -63,10 +63,6 @@ def test_competition_hosts_resolve_to_campus_channel(client):
             "https://scgxxkjs.moocollege.com/competition",
             "学科竞赛平台(moocollege)",
         ),
-        (
-            "https://cp.moocollege.com/home/competition/details?competitionId=107706",
-            "学科竞赛平台(moocollege)",
-        ),
     ]
     for index, (url, name) in enumerate(cases):
         response = client.post(
@@ -117,17 +113,47 @@ def test_unknown_host_is_unverified(client):
     assert body["source_name"] == "example.com"
 
 
+def test_cp_moocollege_detail_is_campus_channel(client):
+    """种子详情页必须是 campus_channel，不能是 unverified。"""
+    url = "https://cp.moocollege.com/home/competition/details?competitionId=107706"
+    response = client.post(
+        "/api/v1/opportunities",
+        json=sample(
+            title="第三届四川省大学生智能医学创新设计大赛",
+            kind="competition",
+            company="四川省教育厅",
+            source_url=url,
+        ),
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["source_url"] == url
+    assert body["source_tier"] == "campus_channel"
+    assert body["source_name"] == "学科竞赛平台(moocollege)"
+
+
+def test_school_yaml_whitelists_moocollege_hosts():
+    from app.services.sources import load_school
+
+    load_school.cache_clear()
+    matched = [
+        source
+        for source in load_school()["sources"]
+        if source["tier"] == "campus_channel"
+        and "competition" in source["applies_to"]
+        and "cp.moocollege.com" in source["hosts"]
+        and "scgxxkjs.moocollege.com" in source["hosts"]
+    ]
+    assert matched, "cp.moocollege.com 与 scgxxkjs.moocollege.com 必须同属竞赛 campus_channel 白名单"
+
+
 def test_moocollege_job_is_unverified(client):
-    for url in (
-        "https://scgxxkjs.moocollege.com/competition",
-        "https://cp.moocollege.com/home/competition/details?competitionId=1",
-    ):
-        response = client.post(
-            "/api/v1/opportunities",
-            json=sample(title=url, company=url, source_url=url),
-        )
-        assert response.status_code == 201, response.text
-        assert response.json()["source_tier"] == "unverified"
+    response = client.post(
+        "/api/v1/opportunities",
+        json=sample(source_url="https://scgxxkjs.moocollege.com/competition"),
+    )
+    assert response.status_code == 201
+    assert response.json()["source_tier"] == "unverified"
 
 
 def test_health_and_cors(client):
