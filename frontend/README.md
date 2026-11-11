@@ -1,8 +1,8 @@
 # 校园可信信息聚合助手
 
-成都理工大学的前端。实习、校招和竞赛用同一套信息结构，手机上优先使用，界面是中文。
+成都理工大学的前端。实习、校招和竞赛分开浏览，手机上优先使用，界面是中文。
 
-求职的官方来源是成都理工大学就业信息网。竞赛白名单包括教务处、管理科学学院、材料与化学化工学院，以及四川省高校学科竞赛平台（`scgxxkjs.moocollege.com` 与 `cp.moocollege.com`，同为校内渠道）。
+校招对应后端的 `campus_recruit`。竞赛白名单包括教务处、管理科学学院、材料与化学化工学院，以及四川省高校学科竞赛平台（`scgxxkjs.moocollege.com` 与 `cp.moocollege.com`，同为校内渠道）。
 
 根目录留给后端。这个目录单独安装、单独启动。
 
@@ -20,6 +20,7 @@ make run
 ```bash
 cd frontend
 npm i
+npm test
 npm run dev
 ```
 
@@ -27,9 +28,9 @@ npm run dev
 
 - 换地址：`VITE_API_BASE_URL=http://127.0.0.1:8000 npm run dev`
 - 只用本地示例、不访问后端：`VITE_USE_MOCK=1 npm run dev`
-- 后端没启动时，列表和详情会自动退回本地示例，页面上会写明。录入仍会提示连不上后端，避免把失败当成保存成功。
+- 后端没启动时，列表和详情会自动退回本地示例，页面上会写明。`/submit` 仍会提示连不上后端，避免把失败当成保存成功。
 
-`npm test` 检查筛选、去重、中文错误提示和个人设置解析。`npm run build` 做类型检查并打包。
+`npm test` 检查三个入口的 `kind`、已截止筛选、首访跳过、不感兴趣、去重和中文错误提示。`npm run build` 做类型检查并打包。
 
 ## 目录
 
@@ -38,41 +39,45 @@ frontend/
   src/api/          真实接口客户端，以及连不上时的本地回退
   src/data/seed.ts  本地示例。只写来源页里出现过的事实
   src/domain/       类型、筛选、去重、来源层级
-  src/pages/        求职、竞赛、详情、录入、个人设置
-  src/profile.ts    个人设置的本地读写
+  src/pages/        实习、校招、竞赛、详情、订阅、设置；录入页不进导航
+  src/profile.ts    学院、专业、年级的本地读写
+  src/hidden.ts     不感兴趣的本地编号
 ```
 
 ## 页面
 
 | 路径 | 作用 |
 | --- | --- |
-| `/` | 求职。请求默认列表，只要进行中的实习和校招 |
-| `/?kind=internship` | 只看实习 |
-| `/?kind=campus_recruit` | 只看校招 |
-| `/?status=expired` | 只看已截止。可与上面的类型一起用 |
-| `/competitions` | 竞赛。请求 `?kind=competition` |
-| `/opportunities/:id` | 详情。类型、层级、状态都用中文显示，来源和投递链接向外打开 |
-| `/submit` | 录入。成功后，实习和校招回到对应求职列表，竞赛回到竞赛列表 |
+| `/` | 按旧的 `kind` 参数转到对应列表；没有参数时进入实习 |
+| `/internships` | 实习。请求 `GET /api/v1/opportunities?kind=internship` |
+| `/campus` | 校招。请求 `GET /api/v1/opportunities?kind=campus_recruit` |
+| `/competitions` | 竞赛。请求 `GET /api/v1/opportunities?kind=competition` |
+| `?status=expired` | 只看已截止，可以和上面的类型一起用 |
+| `/opportunities/:id` | 详情。类型、层级、状态都用中文，来源链接可点 |
 | `/subscriptions` | 订阅占位。只在本地记下想关注的类型，不推送、不筛选、不重排 |
-| `/settings` | 个人设置占位。学校、学院、专业、年级只存在这台浏览器 |
+| `/settings` | 修改学院、专业、年级；解除「不感兴趣」 |
+| `/submit` | 录入仍保留，但不出现在顶栏或底栏 |
 
-`/?kind=competition` 会转到竞赛页。
+顶栏是实习、校招、竞赛。底栏是订阅和设置。
 
-个人设置的示例是：成都理工大学、管理科学学院、大数据管理与应用、大二。保存之后不会参与排序，也不会做推荐。
+第一次进入会弹出学院、专业、年级。可以跳过，跳过也能看列表。画像存在这台浏览器的 `localStorage`，不参与筛选或重排，也不编造岗位。设置页仍可修改。
+
+列表每一条都显示来源名称、中文来源层级，以及可点的 `source_url`。点「不感兴趣」只按机会 `id` 在本地隐藏这条的列表和详情，设置页可以解除。不会删除服务器上的记录，也不会按公司拉黑。
 
 ## 接口
 
 基址默认 `http://127.0.0.1:8000`，可用 `VITE_API_BASE_URL` 覆盖。
 
 ```
-GET  /api/v1/opportunities
+GET  /api/v1/opportunities?kind=internship
+GET  /api/v1/opportunities?kind=campus_recruit
 GET  /api/v1/opportunities?kind=competition
 GET  /api/v1/opportunities/:id
 POST /api/v1/opportunities
 PATCH /api/v1/opportunities/:id
 ```
 
-求职页不传 `kind`。后端因此返回进行中的实习和校招，不含竞赛。竞赛页只传 `kind=competition`。需要看已截止时再加 `status=expired`。单个类型用 `kind=internship` 或 `kind=campus_recruit`，不要重复传两个 `kind`。
+三个列表都会带 `kind`。需要看已截止时再加 `status=expired`。不要重复传两个 `kind`。
 
 列表响应是数组。时间是 ISO 字符串，页面按北京时间显示。
 
@@ -105,7 +110,7 @@ PATCH /api/v1/opportunities/:id
 
 ## 本地示例
 
-后端没启动时，列表能看到仍在进行中的宣讲和双选会，它们来自转载，标成未核验。就业网和学院通知里已经写明、并且已经截止的内容，在「已截止」里。两条竞赛样例的报名截止也已经过去，所以竞赛默认列表是空的，打开「已截止」才能看到：
+后端没启动时，校招列表能看到仍在进行中的宣讲和双选会，它们来自转载，标成未核验。就业网和学院通知里已经写明、并且已经截止的内容，在对应类型的「已截止」里。本地示例里的实习和两条竞赛都已经截止，所以这两页默认是空的，打开「已截止」才能看到竞赛：
 
 - `https://aao.cdut.edu.cn/info/1442/7000.htm`
 - `https://cim.cdut.edu.cn/info/1098/6232.htm`

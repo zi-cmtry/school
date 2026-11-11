@@ -1,11 +1,15 @@
 import { NavLink, Outlet } from "react-router-dom"
+import { OnboardingDialog } from "./OnboardingDialog"
 
-const NAV = [
-  { to: "/", label: "求职", end: true },
-  { to: "/competitions", label: "竞赛", end: false },
-  { to: "/submit", label: "录入", end: false },
-  { to: "/subscriptions", label: "订阅", end: false },
-  { to: "/settings", label: "我的", end: false },
+const PRIMARY = [
+  { to: "/internships", label: "实习" },
+  { to: "/campus", label: "校招" },
+  { to: "/competitions", label: "竞赛" },
+]
+
+const SECONDARY = [
+  { to: "/subscriptions", label: "订阅" },
+  { to: "/settings", label: "设置" },
 ]
 
 export function Shell() {
@@ -21,18 +25,26 @@ export function Shell() {
           <div>
             <p className="kicker">成都理工大学</p>
             <h1>校园可信信息聚合助手</h1>
-            <p>求职看就业网，竞赛看白名单渠道。来源没写的事实不补。</p>
+            <p>实习、校招、竞赛分开看。来源没写的事实不补。</p>
           </div>
         </header>
+        <nav className="kind-nav" aria-label="信息类型">
+          {PRIMARY.map((item) => (
+            <NavLink key={item.to} to={item.to}>
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
         <Outlet />
       </div>
-      <nav className="bottom-nav" aria-label="主导航">
-        {NAV.map((item) => (
-          <NavLink key={item.to} to={item.to} end={item.end}>
+      <nav className="bottom-nav" aria-label="其他">
+        {SECONDARY.map((item) => (
+          <NavLink key={item.to} to={item.to}>
             {item.label}
           </NavLink>
         ))}
       </nav>
+      <OnboardingDialog />
     </div>
   )
 }
