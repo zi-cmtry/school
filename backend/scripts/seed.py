@@ -17,7 +17,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 
 from sqlalchemy import delete  # noqa: E402
 
-from app.db import Base, SessionLocal, engine  # noqa: E402
+from app.db import Base, SessionLocal, engine, ensure_opportunity_columns  # noqa: E402
 from app.models import Opportunity  # noqa: E402
 from app.services.dedupe import SHANGHAI, make_dedupe_key  # noqa: E402
 from app.services.sources import resolve_source  # noqa: E402
@@ -48,6 +48,11 @@ def record(
     apply_url: str | None,
     summary: str,
     expected_tier: str,
+    work_location: str | None = None,
+    responsibilities: str = "未提供",
+    requirements: str = "未提供",
+    major_requirements: str = "未提供",
+    major_tags: list[str] | None = None,
 ) -> dict:
     source_name, source_tier = resolve_source(source_url, kind)
     if source_tier != expected_tier:
@@ -69,6 +74,11 @@ def record(
         "location": location,
         "apply_url": apply_url,
         "summary": summary,
+        "work_location": work_location or location or "未提供",
+        "responsibilities": responsibilities,
+        "requirements": requirements,
+        "major_requirements": major_requirements,
+        "major_tags": major_tags or ["通用"],
         "_days": days,
     }
 
@@ -129,6 +139,9 @@ def fixtures() -> list[dict]:
                 "地质工程、岩土工程等，学历为硕士及以上。单位注册在成都。"
             ),
             expected_tier="official",
+            work_location="成都",
+            major_requirements="水利水电工程、地质工程、岩土工程、土木工程、工程管理",
+            major_tags=["水利水电工程", "地质工程", "岩土工程", "土木工程", "工程管理"],
         ),
         record(
             title="海信集团全国营销中心2026届校园招聘",
@@ -206,6 +219,43 @@ def fixtures() -> list[dict]:
             expected_tier="official",
         ),
         record(
+            title="昆仑数智科技有限责任公司校园招聘简章",
+            kind="campus_recruit",
+            company="昆仑数智科技有限责任公司",
+            days=70,
+            source_url=(
+                "https://cdutjy.cdut.edu.cn/data/mcit_editor/20240918/"
+                "%E6%98%86%E4%BB%91%E6%95%B0%E6%99%BA%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90"
+                "%E8%B4%A3%E4%BB%BB%E5%85%AC%E5%8F%B8%E6%A0%A1%E5%9B%AD%E6%8B%9B%E8%81%98"
+                "%E7%AE%80%E7%AB%A0.pdf"
+            ),
+            role_tags=["初级产品经理", "软件开发工程师", "油气业务咨询顾问"],
+            location="成都",
+            apply_url=None,
+            summary=(
+                "昆仑数智科技有限责任公司成立于2020年11月，是中国石油贯彻落实习近平总书记加快建设网络强国、"
+                "数字中国和高水平科技自立自强重要指示批示精神，推进产业数字化和数智产业化协同发展，"
+                "整合内部资源，以市场化方式组建的数智科技公司。"
+            ),
+            expected_tier="official",
+            work_location="成都",
+            responsibilities="协助高级产品经理完成方案设计及需求分析",
+            requirements="计算机、电子信息、数学、大数据管理与应用等相关专业方向硕士研究生及以上",
+            major_requirements=(
+                "计算机、电子信息、数学、大数据管理与应用等相关专业方向硕士研究生及以上\n"
+                "石油工程、地质工程、油气储运工程等相关专业方向本科及以上"
+            ),
+            major_tags=[
+                "计算机",
+                "电子信息",
+                "数学",
+                "大数据管理与应用",
+                "石油工程",
+                "地质工程",
+                "油气储运工程",
+            ],
+        ),
+        record(
             title="关于2026年中国大学生计算机设计大赛成都理工大学校级赛的通知",
             kind="competition",
             company="中国大学生计算机设计大赛",
@@ -249,6 +299,7 @@ def fixtures() -> list[dict]:
 
 def main() -> None:
     Base.metadata.create_all(bind=engine)
+    ensure_opportunity_columns()
     items = fixtures()
     jobs = [item for item in items if item["kind"] in {"internship", "campus_recruit"}]
     contests = [item for item in items if item["kind"] == "competition"]

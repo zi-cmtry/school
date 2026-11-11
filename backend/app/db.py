@@ -41,3 +41,26 @@ def get_db() -> Iterator[Session]:
         yield db
     finally:
         db.close()
+
+
+def ensure_opportunity_columns() -> None:
+    """给已有的 SQLite 表补上摘录字段。新库由 create_all 建齐。"""
+    if not str(engine.url).startswith("sqlite"):
+        return
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    if not inspector.has_table("opportunities"):
+        return
+    existing = {column["name"] for column in inspector.get_columns("opportunities")}
+    statements = {
+        "work_location": "ALTER TABLE opportunities ADD COLUMN work_location VARCHAR(200) DEFAULT '未提供' NOT NULL",
+        "responsibilities": "ALTER TABLE opportunities ADD COLUMN responsibilities TEXT DEFAULT '未提供' NOT NULL",
+        "requirements": "ALTER TABLE opportunities ADD COLUMN requirements TEXT DEFAULT '未提供' NOT NULL",
+        "major_requirements": "ALTER TABLE opportunities ADD COLUMN major_requirements TEXT DEFAULT '未提供' NOT NULL",
+        "major_tags": """ALTER TABLE opportunities ADD COLUMN major_tags JSON DEFAULT '["通用"]' NOT NULL""",
+    }
+    with engine.begin() as connection:
+        for name, sql in statements.items():
+            if name not in existing:
+                connection.execute(text(sql))

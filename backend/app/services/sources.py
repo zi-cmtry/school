@@ -26,9 +26,9 @@ def resolve_source(source_url: str, kind: str) -> tuple[str, str]:
     """按链接和类别返回 (source_name, source_tier)。
 
     配置里的精确主机只在 applies_to 包含该类别时可信，其余为 unverified。
-    企业自己的校招/招聘页（主机形态或路径里的 campus）对实习和校招复用
-    campus_channel，来源名称用配置里的「企业校招」。二手聚合站即使长得像校招页，
-    也保持 unverified。空链接同样不是可信来源。
+    企业自己的校招/招聘页（主机形态，或路径段为 campus / campus-recruit）对实习和校招复用
+    campus_channel，来源名称用配置里的「企业校招」。更长的单词如 campuses 不算。
+    二手聚合站即使长得像校招页，也保持 unverified。空链接同样不是可信来源。
     """
     parsed = urlparse((source_url or "").strip())
     host = (parsed.hostname or "").lower().rstrip(".")
@@ -101,10 +101,23 @@ def _career_pattern_matches(host: str, path: str, source: dict) -> bool:
     for suffix in source.get("host_suffixes") or []:
         if _company_subdomain(bare, str(suffix)):
             return True
-    lowered_path = path.lower()
     for marker in source.get("path_markers") or []:
         token = str(marker).lower().strip()
-        if token and token in lowered_path:
+        if token and _path_has_marker(path, token):
+            return True
+    return False
+
+
+def _path_has_marker(path: str, marker: str) -> bool:
+    """路径段本身是 campus，或是 campus-recruit 这种带分隔符的段。
+
+    不再把任意子串当成校招页，避免 campuses、mycampus 一类路径被误收。
+    """
+    for segment in path.lower().split("/"):
+        if not segment:
+            continue
+        stem = segment.split(".", 1)[0]
+        if stem == marker or stem.startswith(marker + "-") or stem.startswith(marker + "_"):
             return True
     return False
 

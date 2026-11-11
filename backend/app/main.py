@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import models  # noqa: F401  注册数据表
-from app.db import Base, engine
+from app.db import Base, engine, ensure_opportunity_columns
 from app.jobs.scheduler import shutdown_scheduler, start_scheduler
 from app.routers.opportunities import router as opportunities_router
 
@@ -13,6 +13,7 @@ from app.routers.opportunities import router as opportunities_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    ensure_opportunity_columns()
     if os.getenv("DISABLE_SCHEDULER") != "1":
         start_scheduler()
     yield
@@ -23,7 +24,11 @@ app = FastAPI(
     title="成都理工大学校园可信信息",
     version="1.0.0",
     summary="汇总学校渠道的实习、校招与竞赛",
-    description="记录由接口或种子脚本写入。服务不抓取网页，也不生成文案。",
+    description=(
+        "实习、校招和竞赛来自学校白名单。定时或手动采集只摘录原文，"
+        "没有的职责、任职要求、专业要求和工作地记为「未提供」。"
+        "不访问招聘聚合站，也不补写岗位。"
+    ),
     lifespan=lifespan,
 )
 
