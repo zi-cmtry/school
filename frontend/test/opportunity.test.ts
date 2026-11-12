@@ -13,7 +13,7 @@ import {
   resolveSource,
   validateAndBuild,
 } from "../src/domain/opportunity.ts"
-import { KIND_PATH, listPath } from "../src/lists.ts"
+import { KIND_PATH, detailBackPath, listPath } from "../src/lists.ts"
 import { SAMPLE_PROFILE, parseProfile, profileFromGuide, saveProfile } from "../src/profile.ts"
 import { memoryStore } from "../src/storage.ts"
 
@@ -92,6 +92,23 @@ describe("三个入口的列表路径", () => {
     assert.match(card, /source_url/)
     assert.match(card, /source_name/)
     assert.match(card, /TIER_LABEL/)
+  })
+
+  it("详情的返回列表按 kind 回到实习、校招或竞赛", () => {
+    assert.equal(detailBackPath({ kind: "internship", status: "active" }), "/internships")
+    assert.equal(detailBackPath({ kind: "campus_recruit", status: "active" }), "/campus")
+    assert.equal(detailBackPath({ kind: "competition", status: "active" }), "/competitions")
+    assert.equal(detailBackPath({ kind: "internship", status: "expired" }), "/internships?status=expired")
+    assert.equal(detailBackPath({ kind: "campus_recruit", status: "expired" }), "/campus?status=expired")
+    assert.equal(detailBackPath({ kind: "competition", status: "expired" }), "/competitions?status=expired")
+    assert.equal(detailBackPath(null), "/internships")
+
+    const detail = readFileSync(new URL("../src/pages/DetailPage.tsx", import.meta.url), "utf8")
+    assert.match(detail, /detailBackPath/)
+    assert.equal(detail.match(/返回列表/g)?.length, 3)
+    assert.doesNotMatch(detail, /to=["']\/internships["']/)
+    assert.doesNotMatch(detail, /to=["']\/campus["']/)
+    assert.doesNotMatch(detail, /to=["']\/competitions["']/)
   })
 })
 

@@ -5,7 +5,7 @@ import { getOpportunity } from "../api/opportunities"
 import { ApiError, type Opportunity } from "../domain/opportunity"
 import { hideOpportunity, isHidden } from "../hidden"
 import { KIND_LABEL, STATUS_LABEL, TIER_HINT, TIER_LABEL, formatDateTime, showText } from "../labels"
-import { listPath } from "../lists"
+import { detailBackPath } from "../lists"
 
 export function DetailPage() {
   const { id = "" } = useParams()
@@ -16,11 +16,6 @@ export function DetailPage() {
 
   useEffect(() => {
     document.title = "详情 · 校园可信信息"
-    if (isHidden(id)) {
-      setItem(undefined)
-      setError("")
-      return
-    }
     let cancelled = false
     setItem(undefined)
     setError("")
@@ -28,7 +23,7 @@ export function DetailPage() {
       .then((result) => {
         if (cancelled) return
         setItem(result.item)
-        if (result.item) document.title = `${result.item.title} · 校园可信信息`
+        if (result.item && !isHidden(id)) document.title = `${result.item.title} · 校园可信信息`
       })
       .catch((reason: unknown) => {
         if (!cancelled) setError(reason instanceof ApiError ? explainApiError(reason) : "详情加载失败")
@@ -36,7 +31,15 @@ export function DetailPage() {
     return () => {
       cancelled = true
     }
-  }, [id, hidden])
+  }, [id])
+
+  useEffect(() => {
+    if (hidden) document.title = "详情 · 校园可信信息"
+  }, [hidden])
+
+  if (item === undefined && !error) return <p className="lede">加载中</p>
+
+  const back = detailBackPath(item ?? null)
 
   if (hidden) {
     return (
@@ -47,7 +50,7 @@ export function DetailPage() {
           <Link className="primary" to="/settings">
             去设置解除
           </Link>
-          <Link className="ghost" to="/internships">
+          <Link className="ghost" to={back}>
             返回列表
           </Link>
         </div>
@@ -56,17 +59,14 @@ export function DetailPage() {
   }
 
   if (error) return <p className="banner">{error}</p>
-  if (item === undefined) return <p className="lede">加载中</p>
-  if (item === null) {
+  if (!item) {
     return (
       <div className="empty">
         <h2>没有这条信息</h2>
-        <Link to="/internships">返回列表</Link>
+        <Link to={back}>返回列表</Link>
       </div>
     )
   }
-
-  const back = listPath(item.kind, item.status)
   const rows: [string, string][] = [
     ["标题", item.title],
     ["类型", KIND_LABEL[item.kind]],

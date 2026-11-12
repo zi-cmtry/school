@@ -19,3 +19,14 @@ export function listPath(kind: OpportunityKind, status?: OpportunityStatus | nul
   const search = params.toString()
   return `${KIND_PATH[kind]}${search ? `?${search}` : ""}`
 }
+
+/**
+ * 详情页「返回列表」。
+ * 按这条信息自己的 kind 回到对应入口；没有记录可判断时回到实习。
+ */
+export function detailBackPath(
+  item: { kind: OpportunityKind; status?: OpportunityStatus | null } | null,
+): string {
+  if (!item || !Object.hasOwn(KIND_PATH, item.kind)) return listPath("internship")
+  return listPath(item.kind, item.status)
+}
