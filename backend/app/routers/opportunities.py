@@ -20,7 +20,14 @@ from app.schemas import (
 )
 from app.services.dedupe import make_dedupe_key
 from app.services.expire import expire_overdue
-from app.services.fields import GENERIC_MAJOR, MISSING, location_rank, major_matches
+from app.services.fields import (
+    GENERIC_MAJOR,
+    MISSING,
+    employment_outside_sichuan,
+    location_rank,
+    major_matches,
+    resolved_place,
+)
 from app.services.ingest import ingest_opportunities
 from app.services.sources import resolve_source
 
@@ -67,6 +74,13 @@ def _commit(db: Session) -> None:
         raise HTTPException(status_code=409, detail="与已有记录冲突")
 
 
+def _in_catalog(row: Opportunity) -> bool:
+    """省外就业岗不进默认列表，也不进省内视图。竞赛不按工作地排除。"""
+    if row.kind == "competition":
+        return True
+    return not employment_outside_sichuan(row.work_location, row.location)
+
+
 def _sort_rows(rows: list[Opportunity], major: str | None) -> list[Opportunity]:
     """实习和校招：相关专业在前，其次成都，再是其他省内。竞赛只按相关度，不因没有工作地丢掉。"""
 
@@ -75,8 +89,7 @@ def _sort_rows(rows: list[Opportunity], major: str | None) -> list[Opportunity]:
         if row.kind == "competition":
             place = 0
         else:
-            place_text = row.work_location if row.work_location and row.work_location != MISSING else (row.location or "")
-            place = location_rank(place_text)
+            place = location_rank(resolved_place(row.work_location, row.location))
         return (0 if related else 1, place, row.deadline_at, row.id)
 
     return sorted(rows, key=sort_key)
@@ -89,8 +102,10 @@ def _sort_rows(rows: list[Opportunity], major: str | None) -> list[Opportunity]:
     summary="机会列表",
     description=(
         "默认只返回 status=active 的 internship 与 campus_recruit。"
-        "实习和校招把成都市岗排在前面，其他省内岗留在后面，不隐藏。"
-        "传入 major 时，在当前 kind 里把专业要求或专业标签对得上的排在前面，其余仍返回。"
+        "工作地已经写明、且不在四川省的实习和校招，不出现在这份默认列表里，"
+        "传 region=sichuan 的省内视图同样不出现。没有全国岗位列表。"
+        "没写工作地的就业岗仍保留。成都市岗排在前面，绵阳、宜宾等其他省内岗留在后面，不隐藏。"
+        "传入 major 时，在当前列表里把专业要求或专业标签对得上的排在前面，其余仍返回。"
         "「通用」不算对口，也不按职位名匹配。竞赛不因没有工作地被排除。"
     ),
 )
@@ -104,10 +119,16 @@ def list_opportunities(
         default=None,
         description="学生专业，例如大数据管理与应用。只影响同一 kind 内的顺序，不过滤。",
     ),
+    region: str | None = Query(
+        default=None,
+        description="省内视图传 sichuan。默认列表和省内视图都不含工作地在四川省外的实习、校招。",
+    ),
     db: Session = Depends(get_db),
 ) -> list[Opportunity]:
     if kind is not None and kind not in KINDS:
         raise HTTPException(status_code=400, detail="kind 无效")
+    if region is not None and region != "sichuan":
+        raise HTTPException(status_code=400, detail="region 无效")
     effective_status = status or "active"
     if effective_status not in STATUSES:
         raise HTTPException(status_code=400, detail="status 无效")
@@ -117,7 +138,7 @@ def list_opportunities(
         stmt = stmt.where(Opportunity.kind.in_(JOB_KINDS))
     else:
         stmt = stmt.where(Opportunity.kind == kind)
-    rows = list(db.scalars(stmt))
+    rows = [row for row in db.scalars(stmt) if _in_catalog(row)]
     needle = major.strip() if major else ""
     return _sort_rows(rows, needle or None)
 
