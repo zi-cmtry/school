@@ -111,6 +111,22 @@ def job_in_sichuan(work_location: str | None) -> bool:
     return location_rank(work_location) < 2
 
 
+def resolved_place(work_location: str | None, location: str | None = None) -> str:
+    """列表用来判断工作地。work_location 写了就用它，否则回退到 location。都没有是「未提供」。"""
+    primary = missing_if_blank(work_location)
+    if primary != MISSING:
+        return primary
+    return missing_if_blank(location)
+
+
+def employment_outside_sichuan(work_location: str | None, location: str | None = None) -> bool:
+    """工作地已经写明，并且不在四川省。没写工作地不算省外。"""
+    text = resolved_place(work_location, location)
+    if text == MISSING:
+        return False
+    return not job_in_sichuan(text)
+
+
 def excerpt_section(text: str, labels: tuple[str, ...], limit: int = 800) -> str:
     """从原文连续摘一段。找不到小标题就返回「未提供」，不改写。"""
     body = clean_text(text)

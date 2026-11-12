@@ -13,7 +13,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
+SCRIPTS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BACKEND_DIR))
+sys.path.insert(0, str(SCRIPTS_DIR))
 
 from sqlalchemy import delete  # noqa: E402
 
@@ -21,6 +23,29 @@ from app.db import Base, SessionLocal, engine, ensure_opportunity_columns  # noq
 from app.models import Opportunity  # noqa: E402
 from app.services.dedupe import SHANGHAI, make_dedupe_key  # noqa: E402
 from app.services.sources import resolve_source  # noqa: E402
+from seed_excerpts import (  # noqa: E402
+    CHENXIAN_MAJOR_REQUIREMENTS,
+    CHENXIAN_MAJOR_TAGS,
+    CHENXIAN_REQUIREMENTS,
+    CHENXIAN_RESPONSIBILITIES,
+    DIANJIAN_MAJOR_REQUIREMENTS,
+    DIANJIAN_MAJOR_TAGS,
+    DIETUO_MAJOR_REQUIREMENTS,
+    DIETUO_MAJOR_TAGS,
+    DIETUO_REQUIREMENTS,
+    DIETUO_RESPONSIBILITIES,
+    HAIXIN_MAJOR_REQUIREMENTS,
+    HAIXIN_MAJOR_TAGS,
+    HUARUN_MAJOR_REQUIREMENTS,
+    HUARUN_MAJOR_TAGS,
+    HUARUN_REQUIREMENTS,
+    HUARUN_RESPONSIBILITIES,
+    SINOPEC_MAJOR_REQUIREMENTS,
+    SINOPEC_MAJOR_TAGS,
+    SINOPEC_REQUIREMENTS,
+    ZHONGWEI_MAJOR_REQUIREMENTS,
+    ZHONGWEI_MAJOR_TAGS,
+)
 
 REQUIRED_URLS = (
     "https://aao.cdut.edu.cn/info/1442/7000.htm",
@@ -95,10 +120,15 @@ def fixtures() -> list[dict]:
                 "%E5%8F%A0%E6%8B%932025%E6%A0%A1%E5%9B%AD%E6%8B%9B%E8%81%98%E7%AE%80%E7%AB%A0.pdf"
             ),
             role_tags=["AI", "软件开发", "实习"],
-            location="成都",
+            location="成都、南京",
             apply_url="https://www.wjx.top/vm/Ot5dQ4H.aspx",
-            summary="叠拓（Tietoevry）成都招聘简章中的 AI 实习生，面向计算机、AI、应用数学在读研究生。",
+            summary="叠拓（Tietoevry）校园招聘简章中的 AI 实习生，面向计算机、AI、应用数学在读研究生。",
             expected_tier="official",
+            work_location="成都、南京",
+            responsibilities=DIETUO_RESPONSIBILITIES,
+            requirements=DIETUO_REQUIREMENTS,
+            major_requirements=DIETUO_MAJOR_REQUIREMENTS,
+            major_tags=DIETUO_MAJOR_TAGS,
         ),
         record(
             title="成都辰显光电有限公司2027届应届毕业生招聘简章",
@@ -112,14 +142,19 @@ def fixtures() -> list[dict]:
                 "%E6%8B%9B%E8%81%98%E7%AE%80%E7%AB%A0.pdf"
             ),
             role_tags=["光电", "微电子", "材料"],
-            location="成都",
+            location="成都、合肥",
             apply_url="https://vistar.zhiye.com/",
             summary=(
                 "成都辰显光电 2027 届应届毕业生招聘，面向 Micro-LED 显示。"
                 "岗位含电路、结构、光学设计，巨量转移与阵列工艺，以及财务、计划物料和采购。"
-                "工作地成都，网申入口 vistar.zhiye.com。"
+                "工作地以成都为主，背板代工工程师一岗在合肥。网申入口 vistar.zhiye.com。"
             ),
             expected_tier="official",
+            work_location="成都、合肥",
+            responsibilities=CHENXIAN_RESPONSIBILITIES,
+            requirements=CHENXIAN_REQUIREMENTS,
+            major_requirements=CHENXIAN_MAJOR_REQUIREMENTS,
+            major_tags=CHENXIAN_MAJOR_TAGS,
         ),
         record(
             title="中国电建集团成都院2027届校园招聘公告",
@@ -140,8 +175,9 @@ def fixtures() -> list[dict]:
             ),
             expected_tier="official",
             work_location="成都",
-            major_requirements="水利水电工程、地质工程、岩土工程、土木工程、工程管理",
-            major_tags=["水利水电工程", "地质工程", "岩土工程", "土木工程", "工程管理"],
+            # 公告有申请条件和招聘专业，没有岗位职责、任职要求，这两项保持未提供。
+            major_requirements=DIANJIAN_MAJOR_REQUIREMENTS,
+            major_tags=DIANJIAN_MAJOR_TAGS,
         ),
         record(
             title="海信集团全国营销中心2026届校园招聘",
@@ -154,10 +190,13 @@ def fixtures() -> list[dict]:
                 "%E4%B8%AD%E5%BF%832026%E5%B1%8A%E6%A0%A1%E5%9B%AD%E6%8B%9B%E8%81%98%E7%AE%80%E7%AB%A0.pdf"
             ),
             role_tags=["营销", "校招"],
-            location="成都",
+            location="山东青岛、沈阳、长春、北京、天津、石家庄、太原、西安、兰州、郑州、漯河、青岛、济南、临沂、南京、上海、杭州、宁波、无锡、武汉、长沙、南昌、合肥、广州、深圳、南宁、福州、成都、重庆、昆明、贵阳等",
             apply_url="https://jobs.hisense.com",
-            summary="海信集团全国营销中心 2026 届校园招聘，工作地含成都等营销中心。",
+            summary="海信集团全国营销中心 2026 届校园招聘，营销中心名单含成都。简章未写岗位职责和任职要求。",
             expected_tier="official",
+            work_location="山东青岛、沈阳、长春、北京、天津、石家庄、太原、西安、兰州、郑州、漯河、青岛、济南、临沂、南京、上海、杭州、宁波、无锡、武汉、长沙、南昌、合肥、广州、深圳、南宁、福州、成都、重庆、昆明、贵阳等",
+            major_requirements=HAIXIN_MAJOR_REQUIREMENTS,
+            major_tags=HAIXIN_MAJOR_TAGS,
         ),
         record(
             title="中伟集团2026届校园招聘",
@@ -169,13 +208,17 @@ def fixtures() -> list[dict]:
                 "2026%E5%B1%8A%E6%A0%A1%E6%8B%9B%E7%AE%80%E7%AB%A0-250815.pdf"
             ),
             role_tags=["材料", "研发", "校招"],
-            location="湖南、贵州、广西",
+            location="湖南、贵州、广西、印度尼西亚、摩洛哥等",
             apply_url="https://cngr.hotjob.cn",
             summary=(
-                "中伟集团 2026 届校园招聘，覆盖科创研发、矿业资源、信息技术等方向，"
-                "工作地含湖南、贵州、广西。"
+                "中伟集团 2026 届校园招聘，覆盖科创研发、矿业资源、信息技术等方向。"
+                "简章写明工作地点为湖南、贵州、广西、印度尼西亚、摩洛哥等，不在四川。"
             ),
             expected_tier="official",
+            work_location="湖南、贵州、广西、印度尼西亚、摩洛哥等",
+            # 简章是岗位和需求专业对照表，没有岗位职责、任职要求。
+            major_requirements=ZHONGWEI_MAJOR_REQUIREMENTS,
+            major_tags=ZHONGWEI_MAJOR_TAGS,
         ),
         record(
             title="华润数科2025届校园招聘",
@@ -189,14 +232,19 @@ def fixtures() -> list[dict]:
                 "%E7%AB%A0%E3%80%90%E5%90%AB%E5%B2%97%E4%BD%8D%E4%BB%8B%E7%BB%8D%E3%80%91.pdf"
             ),
             role_tags=["数据分析", "咨询", "运营"],
-            location="深圳、成都等",
+            location="北京、香港、深圳、西安、南京、成都、佛山",
             apply_url="https://www.crdigital.com.cn/",
             summary=(
                 "华润数科 2025 届校园招聘。部门层含助理数据师、助理咨询经理、"
                 "助理运营经理、助理产品经理，并写明以上岗位同步招聘 2026 届实习生。"
-                "工作地点含深圳、成都等。"
+                "工作地点：北京、香港、深圳、西安、南京、成都、佛山。"
             ),
             expected_tier="official",
+            work_location="北京、香港、深圳、西安、南京、成都、佛山",
+            responsibilities=HUARUN_RESPONSIBILITIES,
+            requirements=HUARUN_REQUIREMENTS,
+            major_requirements=HUARUN_MAJOR_REQUIREMENTS,
+            major_tags=HUARUN_MAJOR_TAGS,
         ),
         record(
             title="中石化胜利石油工程有限公司2027年度校园招聘简章",
@@ -210,13 +258,19 @@ def fixtures() -> list[dict]:
                 "%E6%A0%A1%E5%9B%AD%E6%8B%9B%E8%81%98%E7%AE%80%E7%AB%A0.pdf"
             ),
             role_tags=["石油工程", "地质", "校招"],
-            location="山东东营",
+            location="以山东东营为主、新疆工区",
             apply_url="http://job.sinopec.com",
             summary=(
                 "中石化胜利石油工程 2027 年度校园招聘，含石油工程、地质及综合商务管理等岗位，"
-                "工作地以山东东营为主。截止时间设在过去，供过期任务演示；调用 expire 后应变为 expired。"
+                "工作地以山东东营为主，现场技术岗另有新疆工区。不在四川。"
+                "截止时间设在过去，供过期任务演示；调用 expire 后应变为 expired。"
             ),
             expected_tier="official",
+            work_location="以山东东营为主、新疆工区",
+            # 简章没有岗位职责。应聘条件、外语水平、其他要求和专业要求按原文写入。
+            requirements=SINOPEC_REQUIREMENTS,
+            major_requirements=SINOPEC_MAJOR_REQUIREMENTS,
+            major_tags=SINOPEC_MAJOR_TAGS,
         ),
         record(
             title="昆仑数智科技有限责任公司校园招聘简章",

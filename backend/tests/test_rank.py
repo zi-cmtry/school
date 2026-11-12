@@ -132,6 +132,110 @@ def test_major_ranks_related_first_and_keeps_the_rest(client):
     assert rows[2]["major_tags"] == ["通用"]
 
 
+def test_outside_province_jobs_stay_out_of_default_and_sichuan_views(client):
+    """中伟这类省外就业岗不进默认列表，也不进省内视图。没写工作地的竞赛仍在。"""
+    chengdu = _create(
+        client,
+        title="成都设计岗",
+        company="成都单位",
+        source_url="https://cdutjy.cdut.edu.cn/chengdu-keep",
+        deadline_at="2027-08-01T18:00:00+08:00",
+        work_location="成都",
+    )
+    mianyang = _create(
+        client,
+        title="绵阳工艺岗",
+        company="绵阳单位",
+        source_url="https://cdutjy.cdut.edu.cn/mianyang-keep",
+        deadline_at="2027-03-01T18:00:00+08:00",
+        work_location="绵阳",
+        location="绵阳",
+    )
+    both = _create(
+        client,
+        title="深圳成都岗",
+        kind="campus_recruit",
+        company="含成都的单位",
+        source_url="https://cdutjy.cdut.edu.cn/both",
+        deadline_at="2027-07-01T18:00:00+08:00",
+        work_location="深圳、成都",
+        location="深圳、成都",
+    )
+    zhongwei = _create(
+        client,
+        title="中伟集团2026届校园招聘",
+        kind="campus_recruit",
+        company="中伟集团",
+        source_url="https://cdutjy.cdut.edu.cn/zhongwei",
+        deadline_at="2027-09-01T18:00:00+08:00",
+        work_location="湖南、贵州、广西",
+        location="湖南、贵州、广西",
+    )
+    shandong = _create(
+        client,
+        title="东营工程岗",
+        kind="campus_recruit",
+        company="东营单位",
+        source_url="https://cdutjy.cdut.edu.cn/dongying",
+        deadline_at="2027-04-01T18:00:00+08:00",
+        work_location="山东东营",
+        location="山东东营",
+    )
+    unknown = _create(
+        client,
+        title="工作地未写",
+        company="未写地点的单位",
+        source_url="https://cdutjy.cdut.edu.cn/unknown-place",
+        deadline_at="2027-02-01T18:00:00+08:00",
+        work_location="未提供",
+        location="",
+    )
+    contest = _create(
+        client,
+        title="没有工作地的省赛",
+        kind="competition",
+        company="四川省教育厅",
+        source_url="https://aao.cdut.edu.cn/info/no-place.htm",
+        deadline_at="2027-05-01T18:00:00+08:00",
+        work_location="未提供",
+        location="",
+    )
+
+    default = client.get("/api/v1/opportunities").json()
+    default_ids = [item["id"] for item in default]
+    assert zhongwei["id"] not in default_ids
+    assert shandong["id"] not in default_ids
+    assert default_ids.index(chengdu["id"]) < default_ids.index(mianyang["id"])
+    assert both["id"] in default_ids
+    assert unknown["id"] in default_ids
+
+    sichuan = client.get("/api/v1/opportunities", params={"region": "sichuan"}).json()
+    sichuan_ids = [item["id"] for item in sichuan]
+    assert zhongwei["id"] not in sichuan_ids
+    assert shandong["id"] not in sichuan_ids
+    assert sichuan_ids == default_ids
+
+    campus = client.get("/api/v1/opportunities", params={"kind": "campus_recruit", "region": "sichuan"}).json()
+    campus_ids = [item["id"] for item in campus]
+    assert zhongwei["id"] not in campus_ids
+    assert shandong["id"] not in campus_ids
+    assert both["id"] in campus_ids
+
+    contests = client.get(
+        "/api/v1/opportunities",
+        params={"kind": "competition", "region": "sichuan"},
+    ).json()
+    assert [item["id"] for item in contests] == [contest["id"]]
+    assert contests[0]["work_location"] == "未提供"
+
+    detail = client.get(f"/api/v1/opportunities/{zhongwei['id']}")
+    assert detail.status_code == 200
+    assert detail.json()["work_location"] == "湖南、贵州、广西"
+
+    rejected = client.get("/api/v1/opportunities", params={"region": "national"})
+    assert rejected.status_code == 400
+
+
 def test_competition_without_work_location_stays_listed(client):
     plain = _create(
         client,
