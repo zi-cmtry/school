@@ -39,7 +39,8 @@ sources:
       - campus.mihoyo.com
     # 主机名第一段（比较前去掉开头的 www），对应 jobs.*、zhaopin.*、maker.*、careers.*、campus.*。
     host_labels: [jobs, zhaopin, maker, careers, campus]
-    # 路径中出现这些片段即视为企业校招页，例如 /campus、/campus-recruit。查询串不算。
+    # 路径段等于 campus，或以 campus-、campus_ 开头（如 /campus、/campus-recruit）。
+    # 不算查询串，也不把 campuses、mycampus 这类更长单词当成校招页。
     path_markers: [campus]
     # 招聘系统上的企业子域。不含 www、m 和裸域，例如 cngr.hotjob.cn、vistar.zhiye.com。
     host_suffixes: [.hotjob.cn, .zhiye.com]

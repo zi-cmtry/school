@@ -2,7 +2,7 @@
 
 汇总**成都理工大学**渠道上的实习、校招和竞赛。来源白名单在 `backend/app/config/school.yaml`。
 
-记录通过本接口或 `make seed` 写入。服务不抓取网页，也不生成文案。
+记录可以由接口、种子或白名单采集写入。采集只摘录原文，不补写岗位或竞赛。
 
 前端在 `frontend/`。先在本目录执行 `make seed` 和 `make run`，再另开终端进入 `frontend` 执行 `npm i` 和 `npm run dev`。页面说明见 `frontend/README.md`。
 
@@ -21,7 +21,9 @@ backend/app/routers/opportunities.py
 backend/app/services/dedupe.py      计算 dedupe_key
 backend/app/services/expire.py      按截止时间过期
 backend/app/services/sources.py     根据链接和类别得到 source_name / source_tier
-backend/app/jobs/scheduler.py       每小时执行一次过期任务
+backend/app/services/collect.py     白名单页面摘录
+backend/app/services/ingest.py      增量写入，并做过去重
+backend/app/jobs/scheduler.py       每小时过期，每 6 小时采集
 backend/app/config/school.yaml
 backend/scripts/seed.py
 backend/tests/
@@ -34,6 +36,16 @@ backend/tests/
 必填：`title`、`kind`、`company`、`deadline_at`、`source_url`、`source_name`、`source_tier`、`status`、`dedupe_key`、`published_at`、`updated_at`、`fetched_at`。
 
 选填：`role_tags[]`、`location`、`apply_url`、`summary`。
+
+列表和详情还会返回摘录字段。原文没有写成「未提供」，专业对不上写成「通用」：
+
+| 字段 | 含义 |
+| --- | --- |
+| work_location | 工作地，如成都、绵阳 |
+| responsibilities | 岗位职责 |
+| requirements | 任职要求 |
+| major_requirements | 专业要求 |
+| major_tags | 专业标签，只来自专业要求或任职要求里的专业名 |
 
 | 字段 | 取值 |
 | --- | --- |
@@ -49,9 +61,11 @@ backend/tests/
 - `dedupe_key` = `normalize(company)|normalize(title)|截止日 YYYY-MM-DD`，日期按**亚洲/上海**。规范化会做 NFKC、转小写，并去掉空白和标点。不带时区的 `deadline_at` 按上海本地时间理解。
 - 已有一条 **active** 记录使用相同 `dedupe_key` 时返回 **409**。`expired`、`withdrawn`、`duplicate` 不挡住新的有效记录。
 - `source_url` 唯一，重复时返回 **409**。
-- `GET /api/v1/opportunities` 只返回 `status=active` 的 `internship` 与 `campus_recruit`。竞赛不在这个默认列表里。
-- `GET /api/v1/opportunities?kind=competition` 返回有效竞赛。`status` 默认 `active`，可传 `status=expired` 或其他状态。
+- `GET /api/v1/opportunities` 只返回 `status=active` 的 `internship` 与 `campus_recruit`。竞赛不在这个默认列表里。实习和校招默认把成都市岗排在前面，其他省内岗留在后面，不隐藏。
+- `GET /api/v1/opportunities?major=大数据管理与应用` 仍返回当前列表的全部记录。专业要求或 `major_tags` 对得上的排在前面，其余留在后面。`通用` 不算对口，也不按职位名匹配。
+- `GET /api/v1/opportunities?kind=competition` 返回有效竞赛。`status` 默认 `active`，可传 `status=expired` 或其他状态。竞赛不因没有 `work_location` 被丢掉。
 - `POST /api/v1/admin/jobs/expire` 把截止时间已过的 `active` 记录标为 `expired`。服务运行期间，APScheduler 每小时做同样的扫描。
+- `POST /api/v1/admin/jobs/ingest` 按白名单做增量采集，可重复执行。定时任务每 6 小时跑一次，顺序是先成都、再四川省内其他城市。不访问 Boss 直聘、智联、前程无忧等聚合站。
 
 ## 学校来源
 
@@ -67,10 +81,10 @@ backend/tests/
 企业校招不新写枚举，和竞赛白名单一样落在 `campus_channel`。链接满足下面任一条件，且类别是实习或校招时，来源名称写「企业校招」：
 
 - 主机名第一段是 `jobs`、`zhaopin`、`maker`、`careers`、`campus`（比较前去掉开头的 `www`）。例如 `jobs.hisense.com`、`maker.haier.net`、`campus.mihoyo.com`。
-- 路径里含有 `campus`（例如 `/campus`、`/campus-recruit`）。只出现在查询串里不算。
+- 路径段是 `campus`，或以 `campus-`、`campus_` 开头（例如 `/campus`、`/campus-recruit`）。只出现在查询串里不算。`campuses`、`mycampus` 这类更长的单词不算。
 - 主机写在 `school.yaml` 的企业招聘名单里，或是 `hotjob.cn`、`zhiye.com` 上的企业子域（如 `cngr.hotjob.cn`、`vistar.zhiye.com`、`job.sinopec.com`、`xz.duoyi.com`）。`www` 和裸域不算，所以 `www.hotjob.cn`、`zhiye.com` 仍是未核验。
 
-以下仍是 `unverified`：二手聚合或转载站（应届生求职网、E职科技、智联、前程无忧等）即使路径里带 `campus` 或主机以 `jobs.` 开头；空白或缺失的 `source_url`（接口返回 400）；主机和类别对不上，例如就业网上的竞赛、竞赛白名单站点上的岗位。服务不抓取网页，也不编造岗位。
+以下仍是 `unverified`：二手聚合或转载站（应届生求职网、E职科技、智联、前程无忧、Boss 直聘等）即使路径里带 `campus` 或主机以 `jobs.` 开头；空白或缺失的 `source_url`（接口返回 400）；主机和类别对不上，例如就业网上的竞赛、竞赛白名单站点上的岗位。采集不把这些聚合站当来源，也不编造原文里没有的职责或专业。
 
 ## 运行
 
@@ -92,6 +106,7 @@ make run
 - 中伟集团2026届校园招聘 — 材料、矿业
 - 海信集团全国营销中心2026届校园招聘 — 营销、经管
 - 华润数科2025届校园招聘 — 数据分析、咨询、运营
+- 昆仑数智科技有限责任公司校园招聘简章 — 原文专业要求含计算机、电子信息、数学、大数据管理与应用，以及石油工程、地质工程、油气储运工程。部分岗位写明工作地点成都
 - 中石化胜利石油工程有限公司2027年度校园招聘简章 — 石油工程、地质；截止时间已过
 
 种子中的竞赛：
@@ -112,6 +127,18 @@ curl -s http://127.0.0.1:8000/api/v1/health
 
 ```bash
 curl -s http://127.0.0.1:8000/api/v1/opportunities
+```
+
+同一列表里，专业要求对得上「大数据管理与应用」的排在前面，其余岗位仍返回：
+
+```bash
+curl -s --get http://127.0.0.1:8000/api/v1/opportunities --data-urlencode "major=大数据管理与应用"
+```
+
+手动跑一遍白名单采集：
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/v1/admin/jobs/ingest
 ```
 
 竞赛，含 moocollege 详情、教务处和计算机学院通知：

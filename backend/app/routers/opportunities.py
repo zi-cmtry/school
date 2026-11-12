@@ -13,12 +13,15 @@ from app.schemas import (
     KINDS,
     STATUSES,
     ExpireResult,
+    IngestResult,
     OpportunityCreate,
     OpportunityOut,
     OpportunityUpdate,
 )
 from app.services.dedupe import make_dedupe_key
 from app.services.expire import expire_overdue
+from app.services.fields import GENERIC_MAJOR, MISSING, location_rank, major_matches
+from app.services.ingest import ingest_opportunities
 from app.services.sources import resolve_source
 
 router = APIRouter()
@@ -64,12 +67,32 @@ def _commit(db: Session) -> None:
         raise HTTPException(status_code=409, detail="与已有记录冲突")
 
 
+def _sort_rows(rows: list[Opportunity], major: str | None) -> list[Opportunity]:
+    """实习和校招：相关专业在前，其次成都，再是其他省内。竞赛只按相关度，不因没有工作地丢掉。"""
+
+    def sort_key(row: Opportunity):
+        related = major_matches(major, row.major_tags, row.major_requirements)
+        if row.kind == "competition":
+            place = 0
+        else:
+            place_text = row.work_location if row.work_location and row.work_location != MISSING else (row.location or "")
+            place = location_rank(place_text)
+        return (0 if related else 1, place, row.deadline_at, row.id)
+
+    return sorted(rows, key=sort_key)
+
+
 @router.get(
     "/opportunities",
     response_model=list[OpportunityOut],
     tags=["机会"],
     summary="机会列表",
-    description="默认只返回 status=active 的 internship 与 campus_recruit。传入 kind=competition 时返回竞赛。",
+    description=(
+        "默认只返回 status=active 的 internship 与 campus_recruit。"
+        "实习和校招把成都市岗排在前面，其他省内岗留在后面，不隐藏。"
+        "传入 major 时，在当前 kind 里把专业要求或专业标签对得上的排在前面，其余仍返回。"
+        "「通用」不算对口，也不按职位名匹配。竞赛不因没有工作地被排除。"
+    ),
 )
 def list_opportunities(
     kind: str | None = Query(
@@ -77,6 +100,10 @@ def list_opportunities(
         description="internship、campus_recruit 或 competition。省略时只含前两类。",
     ),
     status: str | None = Query(default=None, description="默认 active"),
+    major: str | None = Query(
+        default=None,
+        description="学生专业，例如大数据管理与应用。只影响同一 kind 内的顺序，不过滤。",
+    ),
     db: Session = Depends(get_db),
 ) -> list[Opportunity]:
     if kind is not None and kind not in KINDS:
@@ -90,8 +117,9 @@ def list_opportunities(
         stmt = stmt.where(Opportunity.kind.in_(JOB_KINDS))
     else:
         stmt = stmt.where(Opportunity.kind == kind)
-    stmt = stmt.order_by(Opportunity.deadline_at.asc(), Opportunity.id.asc())
-    return list(db.scalars(stmt))
+    rows = list(db.scalars(stmt))
+    needle = major.strip() if major else ""
+    return _sort_rows(rows, needle or None)
 
 
 @router.get(
@@ -142,6 +170,11 @@ def create_opportunity(payload: OpportunityCreate, db: Session = Depends(get_db)
         location=payload.location,
         apply_url=payload.apply_url,
         summary=payload.summary,
+        work_location=payload.work_location or MISSING,
+        responsibilities=payload.responsibilities or MISSING,
+        requirements=payload.requirements or MISSING,
+        major_requirements=payload.major_requirements or MISSING,
+        major_tags=payload.major_tags or [GENERIC_MAJOR],
     )
     db.add(row)
     _commit(db)
@@ -219,3 +252,18 @@ def delete_opportunity(opportunity_id: int, db: Session = Depends(get_db)) -> Re
 def trigger_expire(db: Session = Depends(get_db)) -> ExpireResult:
     count = expire_overdue(db)
     return ExpireResult(expired=count)
+
+
+@router.post(
+    "/admin/jobs/ingest",
+    response_model=IngestResult,
+    tags=["管理"],
+    summary="执行白名单采集",
+    description=(
+        "从学生就业指导中心、企业自己的招聘页和本校竞赛白名单做增量采集。"
+        "先处理工作地在成都的岗位，再处理四川省内其他城市。可重复执行。"
+        "原文没有的字段记为未提供。不访问 Boss 直聘、智联、前程无忧等聚合站。"
+    ),
+)
+def trigger_ingest(db: Session = Depends(get_db)) -> IngestResult:
+    return IngestResult(**ingest_opportunities(db))

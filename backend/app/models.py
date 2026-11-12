@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import JSON, TypeDecorator
 
 from app.db import Base
+from app.services.fields import GENERIC_MAJOR, MISSING
 
 SHANGHAI = ZoneInfo("Asia/Shanghai")
 
@@ -59,3 +60,8 @@ class Opportunity(Base):
     location: Mapped[str | None] = mapped_column(String(200), nullable=True)
     apply_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    work_location: Mapped[str] = mapped_column(String(200), nullable=False, default=MISSING)
+    responsibilities: Mapped[str] = mapped_column(Text, nullable=False, default=MISSING)
+    requirements: Mapped[str] = mapped_column(Text, nullable=False, default=MISSING)
+    major_requirements: Mapped[str] = mapped_column(Text, nullable=False, default=MISSING)
+    major_tags: Mapped[list] = mapped_column(JSON, nullable=False, default=lambda: [GENERIC_MAJOR])

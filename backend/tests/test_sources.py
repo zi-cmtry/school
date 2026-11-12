@@ -67,6 +67,16 @@ def test_random_host_stays_unverified():
     assert name == "example.com"
 
 
+def test_campus_inside_a_longer_word_stays_unverified():
+    for url in (
+        "https://example.com/news/campuses",
+        "https://example.com/blog/mycampusguide",
+        "https://example.com/products/campusedition",
+    ):
+        _name, tier = resolve_source(url, "campus_recruit")
+        assert tier == "unverified"
+
+
 def test_campus_only_in_query_stays_unverified():
     name, tier = resolve_source("https://example.com/search?q=campus", "campus_recruit")
     assert tier == "unverified"
