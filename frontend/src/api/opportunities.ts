@@ -4,6 +4,8 @@ import { errorFromResponse } from "./errors"
 import { opportunityCollectionPath, opportunityItemPath } from "./paths"
 import {
   ApiError,
+  GENERIC_MAJOR,
+  MISSING_TEXT,
   filterOpportunities,
   isKind,
   isStatus,
@@ -13,6 +15,7 @@ import {
   type Opportunity,
   type OpportunityKind,
   type OpportunityStatus,
+  type PlaceScope,
   type SourceTier,
 } from "../domain/opportunity"
 
@@ -44,8 +47,19 @@ function isStoredOpportunity(value: unknown): value is Opportunity {
   return typeof item.id === "string" && typeof item.title === "string" && typeof item.source_url === "string"
 }
 
+function completeStored(item: Opportunity): Opportunity {
+  return {
+    ...item,
+    work_location: excerptField(item.work_location),
+    responsibilities: excerptField(item.responsibilities),
+    requirements: excerptField(item.requirements),
+    major_requirements: excerptField(item.major_requirements),
+    major_tags: majorTagField(item.major_tags),
+  }
+}
+
 function readAll(): Opportunity[] {
-  const user = readUserItems()
+  const user = readUserItems().map(completeStored)
   const userIds = new Set(user.map((item) => item.id))
   return [...seedOpportunities.filter((item) => !userIds.has(item.id)), ...user]
 }
@@ -58,6 +72,19 @@ function asText(value: unknown): string {
   if (typeof value === "string") return value
   if (value == null) return ""
   return String(value)
+}
+
+/** 空白或「未提供」收成「未提供」。有原文时原样保留，不改写。 */
+export function excerptField(value: unknown): string {
+  const text = asText(value)
+  if (!text.trim() || text.trim() === MISSING_TEXT) return MISSING_TEXT
+  return text
+}
+
+function majorTagField(value: unknown): string[] {
+  if (!Array.isArray(value)) return [GENERIC_MAJOR]
+  const tags = value.map((tag) => String(tag).trim()).filter(Boolean)
+  return tags.length > 0 ? tags : [GENERIC_MAJOR]
 }
 
 /** 后端 id 是整数，空字段可能是 null。这里收成页面用的字符串。 */
@@ -97,6 +124,11 @@ export function normalizeOpportunity(raw: unknown): Opportunity {
     published_at: asText(row.published_at),
     updated_at: asText(row.updated_at),
     fetched_at: asText(row.fetched_at),
+    work_location: excerptField(row.work_location),
+    responsibilities: excerptField(row.responsibilities),
+    requirements: excerptField(row.requirements),
+    major_requirements: excerptField(row.major_requirements),
+    major_tags: majorTagField(row.major_tags),
   }
 }
 
@@ -221,9 +253,21 @@ function toCreateBodyPartial(patch: Partial<CreateOpportunityInput>): Record<str
   return body
 }
 
-/** 三个入口都会带上 kind。已截止再加 status。画像不进查询。 */
-export function kindListQuery(kind: OpportunityKind, status: OpportunityStatus | null): ListQuery {
+/**
+ * 三个入口都会带上 kind。已截止再加 status。
+ * 已保存且非空的专业才传 major，不传学院和年级。
+ * 实习、校招切到省内才传 region=sichuan；默认（成都）不传 region。
+ * 竞赛不传 region。
+ */
+export function kindListQuery(
+  kind: OpportunityKind,
+  status: OpportunityStatus | null,
+  options?: { major?: string | null; place?: PlaceScope | null },
+): ListQuery {
   const query: ListQuery = { kind }
   if (status) query.status = status
+  const major = options?.major?.trim() ?? ""
+  if (major) query.major = major
+  if (options?.place === "sichuan" && kind !== "competition") query.region = "sichuan"
   return query
 }

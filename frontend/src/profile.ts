@@ -1,7 +1,10 @@
 /**
  * 学院、专业、年级只存在这台浏览器。
- * 不参与列表筛选，不重排，也不用来编造岗位。
+ * 非空专业会作为 major 传给三个列表，只影响顺序，不隐藏其他项，也不编造岗位。
+ * 跳过画像或专业为空时不传 major。
  */
+
+export const PROFILE_CHANGE_EVENT = "cdut-profile-change"
 
 import { browserStore, type KeyValueStore } from "./storage"
 
@@ -88,7 +91,12 @@ export function profileFromGuide(input: { college: string; major: string; grade:
   }
 }
 
+export function savedMajor(store: KeyValueStore | null = browserStore()): string {
+  return loadSavedProfile(store)?.major.trim() ?? ""
+}
+
 export function saveProfile(profile: StudentProfile, store: KeyValueStore | null = browserStore()): void {
   store?.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile))
   store?.setItem(ONBOARDING_STORAGE_KEY, "saved")
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(PROFILE_CHANGE_EVENT))
 }

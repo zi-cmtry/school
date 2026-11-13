@@ -18,6 +18,35 @@ export const COMPETITION_WHITELIST_HOSTS = [
 
 export const JOB_OFFICIAL_HOST = "cdutjy.cdut.edu.cn"
 
+/** 与后端 fields.MISSING / GENERIC_MAJOR 一致。原文没有写「未提供」，专业对不上写「通用」。 */
+export const MISSING_TEXT = "未提供"
+export const GENERIC_MAJOR = "通用"
+
+/** 与后端 fields.SICHUAN_CITIES 一致，只用于判断工作地，不用来补城市。 */
+export const SICHUAN_CITIES = [
+  "成都",
+  "绵阳",
+  "德阳",
+  "宜宾",
+  "南充",
+  "泸州",
+  "乐山",
+  "自贡",
+  "攀枝花",
+  "眉山",
+  "资阳",
+  "遂宁",
+  "内江",
+  "广元",
+  "广安",
+  "达州",
+  "巴中",
+  "雅安",
+  "阿坝",
+  "甘孜",
+  "凉山",
+] as const
+
 export type Opportunity = {
   id: string
   title: string
@@ -36,6 +65,16 @@ export type Opportunity = {
   published_at: string
   updated_at: string
   fetched_at: string
+  /** 工作地。原文没有则为「未提供」。 */
+  work_location: string
+  /** 岗位职责摘录。原文没有则为「未提供」。 */
+  responsibilities: string
+  /** 任职要求摘录。原文没有则为「未提供」。 */
+  requirements: string
+  /** 专业要求摘录。原文没有则为「未提供」。 */
+  major_requirements: string
+  /** 专业标签。对不上为「通用」。 */
+  major_tags: string[]
 }
 
 export type CreateOpportunityInput = {
@@ -60,11 +99,18 @@ export type FieldError = {
 /**
  * 与后端查询一致。
  * 页面三个入口总会带 kind。省略 kind 时，后端和本地回退仍是进行中的实习与校招，不含竞赛。
+ * major 只影响顺序。region 只有省内视图会传 sichuan；默认列表不传。
+ * 两套都不含工作地已写明且不在四川的实习、校招。没有「只看成都」的额外参数。
  */
 export type ListQuery = {
   kind?: OpportunityKind
   status?: OpportunityStatus
+  major?: string
+  region?: "sichuan"
 }
+
+/** 列表上的地点切换。成都是默认列表，省内才传 region。 */
+export type PlaceScope = "chengdu" | "sichuan"
 
 export class ApiError extends Error {
   status: number
@@ -273,18 +319,77 @@ export function isOpen(item: Pick<Opportunity, "status" | "deadline_at">, now: D
 
 const JOB_KINDS: OpportunityKind[] = ["internship", "campus_recruit"]
 
-/** 复刻 GET /api/v1/opportunities：省略 status 时只要 active，省略 kind 时排除竞赛。 */
+export function resolvedPlace(item: { work_location?: string | null; location?: string | null }): string {
+  const primary = (item.work_location ?? "").trim()
+  if (primary && primary !== MISSING_TEXT) return primary
+  const fallback = (item.location ?? "").trim()
+  if (fallback && fallback !== MISSING_TEXT) return fallback
+  return MISSING_TEXT
+}
+
+/** 0 成都，1 其他四川，2 未提供或省外。与后端 location_rank 一致。 */
+export function locationRank(place: string | null | undefined): number {
+  const text = (place ?? "").trim()
+  if (!text || text === MISSING_TEXT) return 2
+  const parts = text.split(/[、,，/\s]+/).filter(Boolean)
+  if (parts.some((part) => part.startsWith("成都"))) return 0
+  if ((SICHUAN_CITIES as readonly string[]).some((city) => text.includes(city)) || text.startsWith("四川")) return 1
+  return 2
+}
+
+/** 工作地已经写明，并且不在四川省。没写工作地不算省外。 */
+export function employmentOutsideSichuan(item: { work_location?: string | null; location?: string | null }): boolean {
+  const place = resolvedPlace(item)
+  if (place === MISSING_TEXT) return false
+  return locationRank(place) >= 2
+}
+
+/**
+ * 学生专业只和专业标签、专业要求比对。
+ * 「通用」不算对口，也不看职位名。
+ */
+export function majorMatches(
+  major: string | null | undefined,
+  item: { major_tags?: string[] | null; major_requirements?: string | null },
+): boolean {
+  const needle = (major ?? "").trim()
+  if (!needle || needle === GENERIC_MAJOR || needle === MISSING_TEXT) return false
+  for (const tag of item.major_tags ?? []) {
+    const text = tag.trim()
+    if (!text || text === GENERIC_MAJOR || text === MISSING_TEXT) continue
+    if (needle === text || text.includes(needle)) return true
+  }
+  const requirements = (item.major_requirements ?? "").trim()
+  if (!requirements || requirements === MISSING_TEXT) return false
+  return requirements.includes(needle)
+}
+
+function compareOpportunities(a: Opportunity, b: Opportunity, major: string | undefined): number {
+  const relatedA = majorMatches(major, a) ? 0 : 1
+  const relatedB = majorMatches(major, b) ? 0 : 1
+  if (relatedA !== relatedB) return relatedA - relatedB
+  const placeA = a.kind === "competition" ? 0 : locationRank(resolvedPlace(a))
+  const placeB = b.kind === "competition" ? 0 : locationRank(resolvedPlace(b))
+  if (placeA !== placeB) return placeA - placeB
+  const byTime = (deadlineMs(a.deadline_at) || 0) - (deadlineMs(b.deadline_at) || 0)
+  if (byTime !== 0) return byTime
+  return a.id.localeCompare(b.id, "en", { numeric: true })
+}
+
+/**
+ * 复刻 GET /api/v1/opportunities。
+ * 省略 status 时只要 active，省略 kind 时排除竞赛。
+ * 实习和校招去掉工作地已写明且不在四川的记录；默认列表和 region=sichuan 同一套。
+ * 竞赛不按工作地排除。major 只把对口的排到前面，不删其余记录，也不看标题。
+ */
 export function filterOpportunities(items: Opportunity[], query: ListQuery): Opportunity[] {
   const status = query.status ?? "active"
   return items
     .filter((item) => item.status === status)
     .filter((item) => (query.kind ? item.kind === query.kind : JOB_KINDS.includes(item.kind)))
+    .filter((item) => item.kind === "competition" || !employmentOutsideSichuan(item))
     .slice()
-    .sort((a, b) => {
-      const byTime = (deadlineMs(a.deadline_at) || 0) - (deadlineMs(b.deadline_at) || 0)
-      if (byTime !== 0) return byTime
-      return a.id.localeCompare(b.id, "en", { numeric: true })
-    })
+    .sort((a, b) => compareOpportunities(a, b, query.major))
 }
 
 function cleanTags(tags: string[] | undefined): string[] {
@@ -384,6 +489,11 @@ export function validateAndBuild(
     published_at: stamp,
     updated_at: stamp,
     fetched_at: stamp,
+    work_location: MISSING_TEXT,
+    responsibilities: MISSING_TEXT,
+    requirements: MISSING_TEXT,
+    major_requirements: MISSING_TEXT,
+    major_tags: [GENERIC_MAJOR],
   }
   return { ok: true, value }
 }

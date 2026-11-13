@@ -4,7 +4,7 @@ import { explainApiError } from "../api/messages"
 import { getOpportunity } from "../api/opportunities"
 import { ApiError, type Opportunity } from "../domain/opportunity"
 import { hideOpportunity, isHidden } from "../hidden"
-import { KIND_LABEL, STATUS_LABEL, TIER_HINT, TIER_LABEL, formatDateTime, showText } from "../labels"
+import { KIND_LABEL, STATUS_LABEL, TIER_HINT, TIER_LABEL, excerptOrMissing, formatDateTime, showText } from "../labels"
 import { detailBackPath } from "../lists"
 
 export function DetailPage() {
@@ -73,6 +73,7 @@ export function DetailPage() {
     ["单位", showText(item.company)],
     ["岗位或赛道", item.role_tags.length ? item.role_tags.join("、") : "原文未提供"],
     ["地点", showText(item.location)],
+    ["工作地", excerptOrMissing(item.work_location)],
     ["截止时间", formatDateTime(item.deadline_at)],
     ["来源名称", showText(item.source_name)],
     ["来源层级", `${TIER_LABEL[item.source_tier]}。${TIER_HINT[item.source_tier]}`],
@@ -94,6 +95,9 @@ export function DetailPage() {
       </div>
       <h2>{item.title}</h2>
       <p className="summary">{item.summary || "原文未提供摘要。"}</p>
+      <Excerpt heading="岗位职责" value={item.responsibilities} />
+      <Excerpt heading="任职要求" value={item.requirements} />
+      <Excerpt heading="专业要求" value={item.major_requirements} />
       <div className="detail-actions">
         <a className="primary" href={item.source_url} target="_blank" rel="noreferrer">
           打开来源
@@ -149,5 +153,14 @@ export function DetailPage() {
         </div>
       </dl>
     </article>
+  )
+}
+
+function Excerpt({ heading, value }: { heading: string; value: string }) {
+  return (
+    <section className="excerpt-block">
+      <h3>{heading}</h3>
+      <p className="excerpt">{excerptOrMissing(value)}</p>
+    </section>
   )
 }

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom"
 import type { Opportunity } from "../domain/opportunity"
 import { isOpen } from "../domain/opportunity"
-import { KIND_LABEL, STATUS_LABEL, TIER_LABEL, deadlineHint, formatDateTime } from "../labels"
+import { KIND_LABEL, STATUS_LABEL, TIER_LABEL, deadlineHint, excerptOrMissing, formatDateTime } from "../labels"
 
 export function OpportunityCard({
   item,
@@ -30,6 +30,7 @@ export function OpportunityCard({
         <h2>{item.title}</h2>
         {item.company ? <p className="company">{item.company}</p> : null}
         {item.location ? <p className="meta">{item.location}</p> : <p className="meta">地点：原文未提供</p>}
+        <p className="meta">工作地：{excerptOrMissing(item.work_location)}</p>
         <p className="meta">截止 {formatDateTime(item.deadline_at)}</p>
         {tags.length > 0 ? (
           <div className="tags">

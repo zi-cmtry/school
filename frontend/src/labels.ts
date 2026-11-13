@@ -74,3 +74,10 @@ export function splitTags(value: string): string[] {
 export function showText(value: string): string {
   return value.trim() ? value : "原文未提供"
 }
+
+/** 岗位职责、任职要求、专业要求。原文没有或已经是「未提供」时就显示「未提供」，不改写其余文字。 */
+export function excerptOrMissing(value: string | null | undefined): string {
+  if (value == null) return "未提供"
+  if (!value.trim() || value.trim() === "未提供") return "未提供"
+  return value
+}
