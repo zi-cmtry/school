@@ -79,11 +79,11 @@ export function SettingsPage() {
       <div className="panel">
         <h2 className="section-title">学院、专业、年级</h2>
         <p className="lede">
-          只保存在这台浏览器。不会用来筛选或重排实习、校招、竞赛，也不会编造岗位。
+          只保存在这台浏览器。专业会传给实习、校招和竞赛，把对口的排在前面，不隐藏其他信息，也不改写标题。地点在实习和校招页面切换。跳过或专业留空时不传 major。
         </p>
-        {skipped ? <p className="banner note">你跳过了首次填写。这里仍可以补，列表保持原样。</p> : null}
+        {skipped ? <p className="banner note">你跳过了首次填写。这里仍可以补。没填专业时，列表不带 major。</p> : null}
         {known && !saved ? <p className="banner note">已读取上次保存在本地的画像。</p> : null}
-        {saved ? <p className="banner note">已保存在这台浏览器。列表顺序保持原样。</p> : null}
+        {saved ? <p className="banner note">已保存在这台浏览器。回到列表后，会按专业把对口的排在前面，其余仍显示。</p> : null}
         {!known && !skipped ? <p className="banner note">还没有保存画像。下面是空的，示例可以一键填入。</p> : null}
         <form className="form" onSubmit={onSubmit}>
           <label>

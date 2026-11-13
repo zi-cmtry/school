@@ -30,7 +30,7 @@ npm run dev
 - 只用本地示例、不访问后端：`VITE_USE_MOCK=1 npm run dev`
 - 后端没启动时，列表和详情会自动退回本地示例，页面上会写明。`/submit` 仍会提示连不上后端，避免把失败当成保存成功。
 
-`npm test` 检查三个入口的 `kind`、已截止筛选、首访跳过、不感兴趣、去重和中文错误提示。`npm run build` 做类型检查并打包。
+`npm test` 检查三个入口的 `kind`、已截止筛选、有专业时请求带 `major`、无专业时不传 `major`、成都不传 `region`、省内传 `region=sichuan`、竞赛不被地点筛掉、详情里的「未提供」、首访跳过、不感兴趣、去重和中文错误提示。`npm run build` 做类型检查并打包。
 
 ## 目录
 
@@ -52,17 +52,21 @@ frontend/
 | `/internships` | 实习。请求 `GET /api/v1/opportunities?kind=internship` |
 | `/campus` | 校招。请求 `GET /api/v1/opportunities?kind=campus_recruit` |
 | `/competitions` | 竞赛。请求 `GET /api/v1/opportunities?kind=competition` |
+| 地点「成都」 | 实习和校招的默认列表，不传 `region`。省外就业岗不出现 |
+| 地点「省内」 | 实习和校招改传 `region=sichuan`。省外就业岗同样不出现，绵阳、宜宾等仍在 |
 | `?status=expired` | 只看已截止，可以和上面的类型一起用 |
-| `/opportunities/:id` | 详情。类型、层级、状态都用中文，来源链接可点 |
+| `/opportunities/:id` | 详情。岗位职责、任职要求、专业要求按原文显示；没有则写「未提供」。来源链接可点 |
 | `/subscriptions` | 订阅占位。只在本地记下想关注的类型，不推送、不筛选、不重排 |
 | `/settings` | 修改学院、专业、年级；解除「不感兴趣」 |
 | `/submit` | 录入仍保留，但不出现在顶栏或底栏 |
 
 顶栏是实习、校招、竞赛。底栏是订阅和设置。
 
-第一次进入会弹出学院、专业、年级。可以跳过，跳过也能看列表。画像存在这台浏览器的 `localStorage`，不参与筛选或重排，也不编造岗位。设置页仍可修改。
+第一次进入会弹出学院、专业、年级。可以跳过，跳过也能看列表。画像存在这台浏览器的 `localStorage`。已经填写的专业会作为 `major` 传给实习、校招和竞赛：对口的排在前面，其余仍显示，不另开栏目，也不改写标题。跳过画像，或专业是空的，就不传 `major`。设置页仍可修改。
 
-列表每一条都显示来源名称、中文来源层级，以及可点的 `source_url`。点「不感兴趣」只按机会 `id` 在本地隐藏这条的列表和详情，设置页可以解除。不会删除服务器上的记录，也不会按公司拉黑。
+实习和校招可以在「成都」和「省内」之间切换。成都是默认列表，不传 `region`。省内传 `region=sichuan`。两种请求都不包含工作地已经写明、且不在四川省的就业岗；工作地里写了成都的多地岗位两种视图都保留。没有全国列表，前端也不另写一套工作地过滤。竞赛不出现地点切换，不按工作地筛选，没写 `work_location` 的竞赛也保留。
+
+列表每一条都显示来源名称、中文来源层级、工作地，以及可点的 `source_url`。点「不感兴趣」只按机会 `id` 在本地隐藏这条的列表和详情，设置页可以解除。不会删除服务器上的记录，也不会按公司拉黑。
 
 ## 接口
 
@@ -72,12 +76,16 @@ frontend/
 GET  /api/v1/opportunities?kind=internship
 GET  /api/v1/opportunities?kind=campus_recruit
 GET  /api/v1/opportunities?kind=competition
+GET  /api/v1/opportunities?kind=campus_recruit&major=大数据管理与应用
+GET  /api/v1/opportunities?kind=internship&region=sichuan
 GET  /api/v1/opportunities/:id
 POST /api/v1/opportunities
 PATCH /api/v1/opportunities/:id
 ```
 
 三个列表都会带 `kind`。需要看已截止时再加 `status=expired`。不要重复传两个 `kind`。
+
+已保存专业时再加 `major`，只影响顺序。实习和校招切到省内再加 `region=sichuan`；默认的成都视图不传 `region`。竞赛不传 `region`。详情里的 `responsibilities`、`requirements`、`major_requirements` 原样显示，空白或「未提供」都显示「未提供」。
 
 列表响应是数组。时间是 ISO 字符串，页面按北京时间显示。
 
@@ -110,7 +118,7 @@ PATCH /api/v1/opportunities/:id
 
 ## 本地示例
 
-后端没启动时，校招列表能看到仍在进行中的宣讲和双选会，它们来自转载，标成未核验。就业网和学院通知里已经写明、并且已经截止的内容，在对应类型的「已截止」里。本地示例里的实习和两条竞赛都已经截止，所以这两页默认是空的，打开「已截止」才能看到竞赛：
+后端没启动时，校招列表能看到仍在进行中的宣讲和双选会，它们来自转载，标成未核验。本地示例也能看到电建、海信和昆仑数智：电建、海信的岗位职责和任职要求是「未提供」；填了「大数据管理与应用」时，昆仑数智排在校招前面，其余校招仍在。成都和省内都不出现中伟、多益、胜利石油；海信的工作地名单里有成都，所以仍在。竞赛不按工作地过滤，智能医学创新设计大赛没有 `work_location` 也会留在竞赛列表。打开「已截止」还能看到这两条竞赛：
 
 - `https://aao.cdut.edu.cn/info/1442/7000.htm`
 - `https://cim.cdut.edu.cn/info/1098/6232.htm`

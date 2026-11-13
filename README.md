@@ -6,6 +6,8 @@
 
 前端在 `frontend/`。先在本目录执行 `make seed` 和 `make run`，再另开终端进入 `frontend` 执行 `npm i` 和 `npm run dev`。页面说明见 `frontend/README.md`。
 
+前端三个列表在已保存专业时带 `major`，对口项排在前面，其余仍返回。实习和校招默认不传 `region`（成都视图），切到省内才传 `region=sichuan`。两种列表都不含省外就业岗。竞赛不传 `region`，也不因缺少 `work_location` 被丢掉。详情按原文显示岗位职责、任职要求和专业要求，没有则显示「未提供」。
+
 ## 技术栈
 
 Python 3.12、FastAPI、SQLAlchemy 2、SQLite、APScheduler。

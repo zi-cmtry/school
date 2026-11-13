@@ -70,7 +70,7 @@ export function OnboardingDialog() {
       <div ref={dialogRef} className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <h2 id={titleId}>先写一下你的院系</h2>
         <p className="lede">
-          学院、专业和年级只保存在这台浏览器，可以跳过。保存之后不会筛选列表，不会重排，也不会编造岗位。
+          学院、专业和年级只保存在这台浏览器，可以跳过。填了专业后，实习、校招和竞赛会把对口的排在前面，其余仍显示，不另开栏目，也不改写标题或编造岗位。跳过或专业留空时，列表不带 major。
         </p>
         <form className="form" onSubmit={onSubmit}>
           <label>

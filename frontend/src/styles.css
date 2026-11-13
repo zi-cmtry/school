@@ -103,6 +103,7 @@ button { cursor: pointer; }
   padding: 8px 12px;
   text-decoration: none;
 }
+.chip { min-height: 44px; }
 .chip[aria-pressed="true"], .nav-link.active {
   background: var(--pine);
   border-color: var(--pine);
@@ -177,6 +178,22 @@ button { cursor: pointer; }
   background: #f7f4ec;
   border-radius: 12px;
   white-space: pre-wrap;
+}
+.excerpt-block { margin-top: 14px; }
+.excerpt-block h3 {
+  margin: 0 0 6px;
+  font-family: var(--serif);
+  font-size: 18px;
+  font-weight: 600;
+}
+.excerpt {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #f7f4ec;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 14px;
 }
 .fields { display: grid; gap: 10px; margin: 16px 0 0; }
 .fields div {
