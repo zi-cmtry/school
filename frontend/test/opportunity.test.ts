@@ -301,6 +301,7 @@ function sampleOpportunity(overrides: Partial<Opportunity> & Pick<Opportunity, "
     requirements: overrides.requirements ?? "未提供",
     major_requirements: overrides.major_requirements ?? "未提供",
     major_tags: overrides.major_tags ?? ["通用"],
+    risk_flags: overrides.risk_flags ?? [],
   }
 }
 

@@ -10,8 +10,29 @@ import { makeDedupeKey, type Opportunity } from "../domain/opportunity"
 const TALKS_URL = "https://ezhizhaopin.com/school.php?id=2233&section=lectures"
 
 function withKey(
-  item: Omit<Opportunity, "dedupe_key" | "fetched_at" | "work_location" | "responsibilities" | "requirements" | "major_requirements" | "major_tags"> &
-    Partial<Pick<Opportunity, "fetched_at" | "work_location" | "responsibilities" | "requirements" | "major_requirements" | "major_tags">>,
+  item: Omit<
+    Opportunity,
+    | "dedupe_key"
+    | "fetched_at"
+    | "work_location"
+    | "responsibilities"
+    | "requirements"
+    | "major_requirements"
+    | "major_tags"
+    | "risk_flags"
+  > &
+    Partial<
+      Pick<
+        Opportunity,
+        | "fetched_at"
+        | "work_location"
+        | "responsibilities"
+        | "requirements"
+        | "major_requirements"
+        | "major_tags"
+        | "risk_flags"
+      >
+    >,
 ): Opportunity {
   return {
     fetched_at: item.fetched_at ?? item.updated_at,
@@ -21,6 +42,7 @@ function withKey(
     major_requirements: item.major_requirements ?? "未提供",
     major_tags: item.major_tags ?? ["通用"],
     ...item,
+    risk_flags: item.risk_flags ?? [],
     dedupe_key: makeDedupeKey(item.company, item.title, item.deadline_at),
   }
 }

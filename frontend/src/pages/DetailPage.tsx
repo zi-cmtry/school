@@ -6,6 +6,7 @@ import { ApiError, type Opportunity } from "../domain/opportunity"
 import { hideOpportunity, isHidden } from "../hidden"
 import { KIND_LABEL, STATUS_LABEL, TIER_HINT, TIER_LABEL, excerptOrMissing, formatDateTime, showText } from "../labels"
 import { detailBackPath } from "../lists"
+import { RiskNotice } from "../components/RiskNotice"
 
 export function DetailPage() {
   const { id = "" } = useParams()
@@ -94,6 +95,7 @@ export function DetailPage() {
         <span className={`badge ${item.status}`}>{STATUS_LABEL[item.status]}</span>
       </div>
       <h2>{item.title}</h2>
+      <RiskNotice flags={item.risk_flags} />
       <p className="summary">{item.summary || "原文未提供摘要。"}</p>
       <Excerpt heading="岗位职责" value={item.responsibilities} />
       <Excerpt heading="任职要求" value={item.requirements} />

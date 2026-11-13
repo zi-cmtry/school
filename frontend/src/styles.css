@@ -244,6 +244,31 @@ fieldset.choices legend { margin-bottom: 6px; }
   color: var(--clay);
 }
 .banner.note { background: var(--sand-soft); color: var(--sand); }
+.risk-notice {
+  margin: 8px 0 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--clay-soft);
+  color: var(--clay);
+  border: 1px solid #e4c7bf;
+}
+.risk-notice .risk-kicker {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+.risk-notice ul {
+  margin: 0;
+  padding-left: 1.15em;
+  font-size: 14px;
+}
+.risk-notice li { margin: 2px 0; overflow-wrap: anywhere; }
+.risk-notice .risk-foot {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
 .tier-preview { margin: 0; font-size: 13px; color: var(--muted); }
 
 .kind-nav {

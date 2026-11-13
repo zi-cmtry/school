@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import type { Opportunity } from "../domain/opportunity"
 import { isOpen } from "../domain/opportunity"
 import { KIND_LABEL, STATUS_LABEL, TIER_LABEL, deadlineHint, excerptOrMissing, formatDateTime } from "../labels"
+import { RiskNotice } from "./RiskNotice"
 
 export function OpportunityCard({
   item,
@@ -28,6 +29,7 @@ export function OpportunityCard({
           <span className={open ? "remain open" : "remain"}>{deadlineHint(item.deadline_at, now)}</span>
         </div>
         <h2>{item.title}</h2>
+        <RiskNotice flags={item.risk_flags} />
         {item.company ? <p className="company">{item.company}</p> : null}
         {item.location ? <p className="meta">{item.location}</p> : <p className="meta">地点：原文未提供</p>}
         <p className="meta">工作地：{excerptOrMissing(item.work_location)}</p>
