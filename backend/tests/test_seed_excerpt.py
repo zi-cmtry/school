@@ -6,6 +6,7 @@ from pathlib import Path
 
 from app.db import SessionLocal
 from app.models import Opportunity
+from app.services.fields import location_rank, resolved_place
 
 
 def _fixtures():
@@ -82,6 +83,32 @@ def test_pdfs_without_duty_sections_stay_missing():
     assert "油气井工程" in sinopec["major_tags"]
     assert "山东东营" in sinopec["work_location"]
 
+    boe = rows["京东方科技集团股份有限公司"]
+    assert boe["kind"] == "campus_recruit"
+    assert boe["source_tier"] == "campus_channel"
+    assert boe["source_name"] == "企业校招"
+    assert "campus.boe.com" in boe["source_url"]
+    assert boe["work_location"] == "四川省·绵阳市"
+    assert "成都" not in boe["work_location"]
+    assert boe["responsibilities"] == (
+        "确保系统稳定，优化系统功能，改善生产流程。\n"
+        "1.负责工厂信息化系统日常巡检、故障处理、版本更新，保障产线系统稳定运行。\n"
+        "2.维护工单、工艺、物料、工序等基础数据，保证生产数据准确。\n"
+        "3.根据生产业务变更，配置、优化系统功能，改善生产流程。\n"
+        "4.负责工厂信息化系统日常运维、巡检、故障处理，保障产线系统稳定运行。\n"
+        "5.负责机台通讯、数据采集、生产流程管控，解决产线自动化异常问题。"
+    )
+    assert boe["requirements"] == (
+        "1、本科应届毕业生；\n"
+        "2、计算机类、软件类等相关专业；\n"
+        "3、具有较强的学习能力和执行能力，具备基本编程能力，熟练使用Office等办公软件；\n"
+        "4、具备良好的沟通能力、处理问题能力、再学习能力、抗压能力及团队合作意识；\n"
+        "5、有较好的英语能力（英语四级及以上）。"
+    )
+    assert boe["major_requirements"] == "未提供"
+    assert boe["major_tags"] == ["计算机类", "软件类"]
+    assert boe["risk_flags"] == []
+
 
 def test_seeded_catalog_hides_zhongwei_and_keeps_chengdu_jobs(client):
     items = _fixtures()
@@ -110,6 +137,22 @@ def test_seeded_catalog_hides_zhongwei_and_keeps_chengdu_jobs(client):
     sichuan = client.get("/api/v1/opportunities", params={"region": "sichuan"}).json()
     assert [row["id"] for row in sichuan] == [row["id"] for row in default]
     assert all("中伟" not in row["title"] for row in sichuan)
+
+    def place(row: dict) -> int:
+        return location_rank(resolved_place(row["work_location"], row.get("location")))
+
+    # 绵阳岗不含成都：默认列表和省内视图都返回，并排在成都岗之后。
+    for rows in (default, sichuan):
+        boe_rows = [row for row in rows if row["company"] == "京东方科技集团股份有限公司"]
+        assert len(boe_rows) == 1
+        boe_row = boe_rows[0]
+        assert boe_row["work_location"] == "四川省·绵阳市"
+        assert "负责机台通讯、数据采集、生产流程管控" in boe_row["responsibilities"]
+        assert place(boe_row) == 1
+        index = next(i for i, row in enumerate(rows) if row["id"] == boe_row["id"])
+        assert index > 0
+        assert all(place(row) < place(boe_row) for row in rows[:index])
+        assert all(place(row) >= place(boe_row) for row in rows[index:])
 
     contests = client.get(
         "/api/v1/opportunities",
