@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.services.fields import GENERIC_MAJOR, MISSING, missing_if_blank
+from app.services.risk import assign_risk_flags
 
 Kind = Literal["internship", "campus_recruit", "competition"]
 Status = Literal["active", "expired", "duplicate", "withdrawn"]
@@ -134,6 +135,18 @@ class OpportunityOut(BaseModel):
     source_name: str = Field(description="来源名称，由学校配置解析")
     source_tier: SourceTier = Field(description="来源可信级别")
     status: Status = Field(description="active、expired、duplicate 或 withdrawn")
+    risk_flags: list[str] = Field(
+        default_factory=list,
+        description=(
+            "疑似欺骗标注，只做提示。空数组表示没有。"
+            "不改变 status，不因此从列表隐藏，也不因此拒收采集。"
+            "由服务端按已入库字段计算，不采用客户端提交的值。"
+            "取值：no_official_source（无合格源）、aggregator_only（唯一来源是聚合站）、"
+            "pay_to_apply（投递需付费或报名费、定金、押金）、"
+            "domain_mismatch（声称官网但链接主机不符）、"
+            "deadline_conflict（届次与截止时间明显矛盾）。"
+        ),
+    )
     dedupe_key: str = Field(description="规范化单位、标题与上海时区截止日期")
     published_at: datetime = Field(description="首次写入时间，UTC")
     updated_at: datetime = Field(description="最近更新时间，UTC")
@@ -164,6 +177,19 @@ class OpportunityOut(BaseModel):
     @classmethod
     def default_missing(cls, value):
         return missing_if_blank(value if isinstance(value, str) else None if value is None else str(value))
+
+    @field_validator("risk_flags", mode="before")
+    @classmethod
+    def default_risk_flags(cls, value):
+        if not value or isinstance(value, str):
+            return []
+        return list(value)
+
+    @model_validator(mode="after")
+    def refill_risk_flags(self) -> "OpportunityOut":
+        """按当前字段重算，避免库里的旧数组和正文不一致。"""
+        assign_risk_flags(self)
+        return self
 
 
 class ExpireResult(BaseModel):

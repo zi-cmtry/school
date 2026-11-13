@@ -65,3 +65,5 @@ class Opportunity(Base):
     requirements: Mapped[str] = mapped_column(Text, nullable=False, default=MISSING)
     major_requirements: Mapped[str] = mapped_column(Text, nullable=False, default=MISSING)
     major_tags: Mapped[list] = mapped_column(JSON, nullable=False, default=lambda: [GENERIC_MAJOR])
+    # 疑似提示。空数组表示没有。不参与状态、列表过滤或采集拒收。
+    risk_flags: Mapped[list] = mapped_column(JSON, nullable=False, default=list, server_default=text("'[]'"))

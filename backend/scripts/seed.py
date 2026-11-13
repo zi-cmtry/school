@@ -22,6 +22,7 @@ from sqlalchemy import delete  # noqa: E402
 from app.db import Base, SessionLocal, engine, ensure_opportunity_columns  # noqa: E402
 from app.models import Opportunity  # noqa: E402
 from app.services.dedupe import SHANGHAI, make_dedupe_key  # noqa: E402
+from app.services.risk import compute_risk_flags  # noqa: E402
 from app.services.sources import resolve_source  # noqa: E402
 from seed_excerpts import (  # noqa: E402
     CHENXIAN_MAJOR_REQUIREMENTS,
@@ -85,7 +86,7 @@ def record(
             f"{source_url}（{kind}）的 source_tier 为 {source_tier}，期望 {expected_tier}"
         )
     deadline_at = at_days(days)
-    return {
+    item = {
         "title": title,
         "kind": kind,
         "company": company,
@@ -106,6 +107,21 @@ def record(
         "major_tags": major_tags or ["通用"],
         "_days": days,
     }
+    item["risk_flags"] = compute_risk_flags(
+        title=item["title"],
+        company=item["company"],
+        deadline_at=item["deadline_at"],
+        source_url=item["source_url"],
+        source_tier=item["source_tier"],
+        summary=item["summary"],
+        location=item["location"],
+        work_location=item["work_location"],
+        responsibilities=item["responsibilities"],
+        requirements=item["requirements"],
+        major_requirements=item["major_requirements"],
+        role_tags=item["role_tags"],
+    )
+    return item
 
 
 def fixtures() -> list[dict]:
