@@ -22,6 +22,16 @@ def load_school() -> dict:
     return data
 
 
+def is_aggregator_url(source_url: str) -> bool:
+    """主机是否在 school.yaml 的二手聚合站名单里。
+
+    校园官网、就业办和企业自己的校招页不在这份名单里。
+    """
+    parsed = urlparse((source_url or "").strip())
+    host = (parsed.hostname or "").lower().rstrip(".")
+    return _is_aggregator(host, load_school().get("aggregators") or [])
+
+
 def resolve_source(source_url: str, kind: str) -> tuple[str, str]:
     """按链接和类别返回 (source_name, source_tier)。
 

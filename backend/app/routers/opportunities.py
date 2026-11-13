@@ -29,6 +29,7 @@ from app.services.fields import (
     resolved_place,
 )
 from app.services.ingest import ingest_opportunities
+from app.services.risk import assign_risk_flags
 from app.services.sources import resolve_source
 
 router = APIRouter()
@@ -107,6 +108,7 @@ def _sort_rows(rows: list[Opportunity], major: str | None) -> list[Opportunity]:
         "没写工作地的就业岗仍保留。成都市岗排在前面，绵阳、宜宾等其他省内岗留在后面，不隐藏。"
         "传入 major 时，在当前列表里把专业要求或专业标签对得上的排在前面，其余仍返回。"
         "「通用」不算对口，也不按职位名匹配。竞赛不因没有工作地被排除。"
+        "每条记录附带 risk_flags，只做疑似提示，不改变 status，也不因此从列表移除。"
     ),
 )
 def list_opportunities(
@@ -162,7 +164,10 @@ def get_opportunity(opportunity_id: int, db: Session = Depends(get_db)) -> Oppor
     status_code=201,
     tags=["机会"],
     summary="新建机会",
-    description="source_name、source_tier 与 dedupe_key 由服务端根据来源和标题生成。",
+    description=(
+        "source_name、source_tier、dedupe_key 与 risk_flags 由服务端生成。"
+        "risk_flags 只做提示，不因这些标注改 status 或拒绝写入。"
+    ),
 )
 def create_opportunity(payload: OpportunityCreate, db: Session = Depends(get_db)) -> Opportunity:
     source_url = require_source_url(payload.source_url)
@@ -197,6 +202,7 @@ def create_opportunity(payload: OpportunityCreate, db: Session = Depends(get_db)
         major_requirements=payload.major_requirements or MISSING,
         major_tags=payload.major_tags or [GENERIC_MAJOR],
     )
+    assign_risk_flags(row)
     db.add(row)
     _commit(db)
     db.refresh(row)
@@ -243,6 +249,7 @@ def update_opportunity(
         row.source_name, row.source_tier = resolve_source(source_url, kind)
     row.dedupe_key = dedupe_key
     row.updated_at = datetime.now(timezone.utc)
+    assign_risk_flags(row)
     _commit(db)
     db.refresh(row)
     return row

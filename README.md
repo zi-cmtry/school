@@ -21,6 +21,7 @@ backend/app/routers/opportunities.py
 backend/app/services/dedupe.py      计算 dedupe_key
 backend/app/services/expire.py      按截止时间过期
 backend/app/services/sources.py     根据链接和类别得到 source_name / source_tier
+backend/app/services/risk.py       按已入库字段计算 risk_flags
 backend/app/services/collect.py     白名单页面摘录
 backend/app/services/ingest.py      增量写入，并做过去重
 backend/app/jobs/scheduler.py       每小时过期，每 6 小时采集
@@ -52,8 +53,19 @@ backend/tests/
 | kind | `internship`、`campus_recruit`、`competition` |
 | status | `active`、`expired`、`duplicate`、`withdrawn` |
 | source_tier | `official`、`campus_channel`、`student_submit`、`unverified` |
+| risk_flags | 字符串数组。空数组表示没有疑似问题。见下文 |
 
 `source_name` 与 `source_tier` 由 `source_url` 和 `kind` 对照 `school.yaml` 得出，不采用客户端提交的级别。精确主机只在 `applies_to` 列出的类别上可信。企业自己的校招或招聘页在 `internship`、`campus_recruit` 上复用 `campus_channel`（不新增枚举，来源名称记为「企业校招」）。其余为 `unverified`。
+
+`risk_flags` 在写入和读取时按已经入库的字段重算，请求体里的同名字段不采用。它只做提示：不修改 `status`，不从列表隐藏，采集也不因此拒收。默认种子（就业网岗位和校园竞赛）的 `risk_flags` 都是空数组。
+
+| 代码 | 何时出现 | 保守规则 |
+| --- | --- | --- |
+| `no_official_source` | `source_tier` 为 `student_submit` 或 `unverified`，这条记录没有合格源 | 合格源是 `official` 或 `campus_channel`。就业办白名单和企业校招页不打 |
+| `aggregator_only` | 唯一的 `source_url` 落在 `school.yaml` 的聚合站名单 | 已有 `official` 或 `campus_channel` 不打。校园官网、企业校招页不在聚合站名单里 |
+| `pay_to_apply` | 标题、摘要、职责、要求等已有正文明确写了报名费、定金、押金，或投递/报名需要付费 | 薪酬、补贴、工作位置不打。写明不收取报名费或押金不打。原文没有这些话不补写 |
+| `domain_mismatch` | 正文声称官网校招或官方网站，但 `source_url` 主机与写明的地址不是同一站点；或标题写成官网校招而链接不在已识别渠道上；或聚合站上出现这类说法 | 就业办 `cdutjy.cdut.edu.cn` 转发不打。`resolve_source` 认可的校园渠道和企业校招页不打。正文写明的地址若和 `source_url` 是同一站点，不打。职责里的「维护招聘官网」不算声称官网 |
+| `deadline_conflict` | 标题里的「20xx届」全部落在窗口外。窗口是届次年前两年的 1 月 1 日到届次年后两年的 6 月 30 日 | 就业办转发不打。华润数科标题仍是「2025届」，这是已知口径，不因此打标，也不改标题。标题里只要有一届落在窗口内就不打 |
 
 ## 规则
 
@@ -67,6 +79,7 @@ backend/tests/
 - `GET /api/v1/opportunities?kind=competition` 返回有效竞赛。`status` 默认 `active`，可传 `status=expired` 或其他状态。竞赛不因没有 `work_location` 被丢掉，`region=sichuan` 也不因此丢掉竞赛。
 - `POST /api/v1/admin/jobs/expire` 把截止时间已过的 `active` 记录标为 `expired`。服务运行期间，APScheduler 每小时做同样的扫描。
 - `POST /api/v1/admin/jobs/ingest` 按白名单做增量采集，可重复执行。定时任务每 6 小时跑一次，顺序是先成都、再四川省内其他城市。不访问 Boss 直聘、智联、前程无忧等聚合站。
+- `risk_flags` 随列表和详情返回。有标注的记录仍留在列表里，`status` 保持原值。
 
 ## 学校来源
 

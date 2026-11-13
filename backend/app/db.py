@@ -59,6 +59,7 @@ def ensure_opportunity_columns() -> None:
         "requirements": "ALTER TABLE opportunities ADD COLUMN requirements TEXT DEFAULT '未提供' NOT NULL",
         "major_requirements": "ALTER TABLE opportunities ADD COLUMN major_requirements TEXT DEFAULT '未提供' NOT NULL",
         "major_tags": """ALTER TABLE opportunities ADD COLUMN major_tags JSON DEFAULT '["通用"]' NOT NULL""",
+        "risk_flags": """ALTER TABLE opportunities ADD COLUMN risk_flags JSON DEFAULT '[]' NOT NULL""",
     }
     with engine.begin() as connection:
         for name, sql in statements.items():

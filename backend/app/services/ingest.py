@@ -12,6 +12,7 @@ from app.services.collect import Candidate, collect_candidates
 from app.services.dedupe import make_dedupe_key
 from app.services.expire import expire_overdue
 from app.services.fields import GENERIC_MAJOR, MISSING
+from app.services.risk import assign_risk_flags
 from app.services.sources import resolve_source
 
 
@@ -60,31 +61,31 @@ def _upsert(db: Session, candidate: Candidate) -> str:
         ).first()
         if conflict is not None:
             return "skipped"
-        db.add(
-            Opportunity(
-                title=candidate.title,
-                kind=candidate.kind,
-                company=candidate.company,
-                deadline_at=candidate.deadline_at,
-                source_url=candidate.source_url,
-                source_name=source_name,
-                source_tier=source_tier,
-                status="active",
-                dedupe_key=dedupe_key,
-                published_at=now,
-                updated_at=now,
-                fetched_at=now,
-                role_tags=candidate.role_tags,
-                location=None if candidate.work_location == MISSING else candidate.work_location,
-                apply_url=candidate.apply_url,
-                summary=candidate.summary,
-                work_location=candidate.work_location or MISSING,
-                responsibilities=candidate.responsibilities or MISSING,
-                requirements=candidate.requirements or MISSING,
-                major_requirements=candidate.major_requirements or MISSING,
-                major_tags=candidate.major_tags or [GENERIC_MAJOR],
-            )
+        row = Opportunity(
+            title=candidate.title,
+            kind=candidate.kind,
+            company=candidate.company,
+            deadline_at=candidate.deadline_at,
+            source_url=candidate.source_url,
+            source_name=source_name,
+            source_tier=source_tier,
+            status="active",
+            dedupe_key=dedupe_key,
+            published_at=now,
+            updated_at=now,
+            fetched_at=now,
+            role_tags=candidate.role_tags,
+            location=None if candidate.work_location == MISSING else candidate.work_location,
+            apply_url=candidate.apply_url,
+            summary=candidate.summary,
+            work_location=candidate.work_location or MISSING,
+            responsibilities=candidate.responsibilities or MISSING,
+            requirements=candidate.requirements or MISSING,
+            major_requirements=candidate.major_requirements or MISSING,
+            major_tags=candidate.major_tags or [GENERIC_MAJOR],
         )
+        assign_risk_flags(row)
+        db.add(row)
         db.commit()
         return "created"
 
@@ -116,5 +117,7 @@ def _upsert(db: Session, candidate: Candidate) -> str:
     existing.major_tags = candidate.major_tags or [GENERIC_MAJOR]
     if existing.status == "active":
         existing.role_tags = candidate.role_tags or existing.role_tags
+    # 标注只随字段重算，不作为拒收条件，也不改 status。
+    assign_risk_flags(existing)
     db.commit()
     return "updated"
