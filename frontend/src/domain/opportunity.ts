@@ -1,3 +1,5 @@
+import type { RiskFlag } from "./risk"
+
 export const OPPORTUNITY_KINDS = ["internship", "campus_recruit", "competition"] as const
 export type OpportunityKind = (typeof OPPORTUNITY_KINDS)[number]
 
@@ -73,8 +75,10 @@ export type Opportunity = {
   requirements: string
   /** 专业要求摘录。原文没有则为「未提供」。 */
   major_requirements: string
-  /** 专业标签。对不上为「通用」。 */
+  /** 专业标签。对不上为「通用」。页面不展示。 */
   major_tags: string[]
+  /** 疑似欺骗标注。空数组表示接口没有给出标志。只展示，不据此隐藏或改状态。 */
+  risk_flags: RiskFlag[]
 }
 
 export type CreateOpportunityInput = {
@@ -494,6 +498,7 @@ export function validateAndBuild(
     requirements: MISSING_TEXT,
     major_requirements: MISSING_TEXT,
     major_tags: [GENERIC_MAJOR],
+    risk_flags: [],
   }
   return { ok: true, value }
 }

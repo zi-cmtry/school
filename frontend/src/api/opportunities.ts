@@ -1,4 +1,6 @@
+import { demoRiskOpportunities } from "../data/risk-demo"
 import { seedOpportunities } from "../data/seed"
+import { parseRiskFlags } from "../domain/risk"
 import { apiBaseUrl, useMock } from "./config"
 import { errorFromResponse } from "./errors"
 import { opportunityCollectionPath, opportunityItemPath } from "./paths"
@@ -55,13 +57,15 @@ function completeStored(item: Opportunity): Opportunity {
     requirements: excerptField(item.requirements),
     major_requirements: excerptField(item.major_requirements),
     major_tags: majorTagField(item.major_tags),
+    risk_flags: parseRiskFlags(item.risk_flags),
   }
 }
 
 function readAll(): Opportunity[] {
   const user = readUserItems().map(completeStored)
   const userIds = new Set(user.map((item) => item.id))
-  return [...seedOpportunities.filter((item) => !userIds.has(item.id)), ...user]
+  const base = [...seedOpportunities, ...demoRiskOpportunities].filter((item) => !userIds.has(item.id))
+  return [...base, ...user]
 }
 
 function saveUserItems(items: Opportunity[]): void {
@@ -129,6 +133,7 @@ export function normalizeOpportunity(raw: unknown): Opportunity {
     requirements: excerptField(row.requirements),
     major_requirements: excerptField(row.major_requirements),
     major_tags: majorTagField(row.major_tags),
+    risk_flags: parseRiskFlags(row.risk_flags),
   }
 }
 
